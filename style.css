@@ -1,0 +1,114 @@
+.nav-wrapper, .page-footer, nav{
+    background-color: #9c81c6;
+}
+
+.page-footer a {
+    color: ghostwhite;
+}
+
+html, body {
+    height: 100%;
+}
+
+body{
+    background-color: #dbcdf9;
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-wrapper {
+   width: 100%;
+}
+
+main {
+    flex: 1;
+}
+
+.content {
+    flex-grow: 1;
+}
+
+.card {
+    background-color: ghostwhite;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    transition: 0.3s;
+    width: 80%;
+    border-radius: 5px;
+    margin: 5% auto;
+    padding: 20px;
+    flex: 1;
+}
+
+.card article{
+    margin: auto;
+}
+
+article .card-container, article .card-image, article header{
+    margin: auto;
+    text-align: justify;
+}
+
+.card-container h4{
+    text-align: center;
+}
+
+.card:hover {
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+}
+
+.card-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 70%; /* Place que prendra le texte dans la card */
+}
+
+.card-container p {
+    margin-top: 10px;
+}
+
+.card-image {
+    width: 30%;
+    height: 100%;
+}
+
+.card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.card-container .row {
+    margin-bottom: 20px;
+}
+
+.card-container .col {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.card-container img {
+    max-width: 100%;
+    height: auto;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.logo {
+    width: 100px;
+    padding: 5px;
+}
+
+.profilepicture {
+    width: 200px;
+}
+
+dd {
+    display: list-item;
+    list-style-type: square;
+    padding-inline-start: 1ch;
+}
