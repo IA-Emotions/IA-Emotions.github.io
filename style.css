@@ -111,4 +111,5 @@ dd {
     display: list-item;
     list-style-type: square;
     padding-inline-start: 1ch;
+    padding: 5px;
 }
