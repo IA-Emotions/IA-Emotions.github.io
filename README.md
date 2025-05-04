@@ -15,7 +15,7 @@
 
 **A compléter**
 
-Pour voir le projet en action, visitez [notre site](https://florian-lecourt.github.io/IA-Emotions/).
+Pour voir le projet en action, visitez [notre site](IA-Emotions.github.io).
 
 ## ✨ Fonctionnalités
 
