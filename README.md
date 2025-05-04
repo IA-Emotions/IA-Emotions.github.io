@@ -15,7 +15,7 @@
 
 **A compléter**
 
-Pour voir le projet en action, visitez [notre site](IA-Emotions.github.io).
+Pour voir le projet en action, visitez [notre site](https://ia-emotions.github.io).
 
 ## ✨ Fonctionnalités
 
