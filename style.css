@@ -113,3 +113,48 @@ dd {
     padding-inline-start: 1ch;
     padding: 5px;
 }
+
+.columns-container {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;          /* Stack on mobile */
+    margin-top: 20px;
+}
+
+.col {
+    flex: 0 1 auto;
+    text-align: center;
+    padding: 20px;
+    min-width: 250px;         /* Prevent columns from getting too narrow */
+}
+
+@media (max-width: 600px) {
+    .columns-container {
+        flex-direction: column;
+        align-items: center;    /* Center stacked items */
+    }
+}
+
+.flag-icon {
+    width: 24px;
+    height: 16px;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-top: -3px;
+    border: 1px solid #ddd;
+}
+
+nav ul li.lang-switch-desktop {
+    padding-left: 15px;
+}
+
+.sidenav li.lang-switch-mobile {
+    padding: 0 32px;
+    margin-top: 8px;
+}
+
+.sidenav li.lang-switch-mobile a {
+    padding: 0;
+    display: inline-block;
+}
