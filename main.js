@@ -1,41 +1,72 @@
 (function($){
     $(function(){
-
         $('.sidenav').sidenav();
+    });
+})(jQuery);
 
-    }); // end of document ready
-})(jQuery); // end of jQuery name space
-
-
-    document.addEventListener('DOMContentLoaded', function() {
-    // Get current page filename
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Get current page details
     const currentPath = window.location.pathname;
-    const currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1) || 'index.html';
+    // Decodes URI component to handle "%20" vs spaces correctly in file matching
+    const currentPage = decodeURIComponent(currentPath.substring(currentPath.lastIndexOf('/') + 1) || 'index.html');
 
-    // Detect French page (contains "Fr.html")
-    const isFrenchPage = currentPage.includes('Fr.html');
+    // 2. Detect if we are on a French page
+    // We check for "Fr.html" (case insensitive just to be safe)
+    const isFrenchPage = /Fr\.html$/i.test(currentPage);
 
-    // Define settings based on current language
+    // Define the correct link based on language
+    const chatUrl = isFrenchPage ? 'Chat%20Fr.html' : 'Chat.html';
+
+    // Function to create the list item <li><a href="...">Chatbot</a></li>
+    function createChatLink() {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = chatUrl;
+        a.textContent = 'Chatbot'; // Same text for both languages as requested
+        li.appendChild(a);
+        return li;
+    }
+
+    // Insert into Desktop Menu (before the flag)
+    const desktopList = document.querySelector('nav ul.right');
+    const desktopFlag = desktopList ? desktopList.querySelector('.lang-switch-desktop') : null;
+    if (desktopList && desktopFlag) {
+        // Insert "Chatbot" just before the language flag
+        desktopList.insertBefore(createChatLink(), desktopFlag);
+    }
+
+    // Insert into Mobile Menu (before the flag)
+    const mobileList = document.getElementById('nav-mobile');
+    const mobileFlag = mobileList ? mobileList.querySelector('.lang-switch-mobile') : null;
+    if (mobileList && mobileFlag) {
+        // Insert "Chatbot" just before the language flag
+        mobileList.insertBefore(createChatLink(), mobileFlag);
+    }
+
+    // 3. Define Language Switcher settings
     const langSettings = isFrenchPage
-    ? {
-    flagSrc: './rsc/united.png',
-    flagAlt: 'Switch to English',
-    targetPage: currentPage.replace(/(\s|%20)Fr\.html/i, '.html')
-}
-    : {
-    flagSrc: './rsc/france.png',
-    flagAlt: 'Passer en français',
-    targetPage: currentPage === 'index.html' ? 'index%20Fr.html' : currentPage.replace('.html', '%20Fr.html')
-};
+        ? {
+            flagSrc: './rsc/united.png',
+            flagAlt: 'Switch to English',
+            // Replace " Fr.html" or "%20Fr.html" with ".html"
+            targetPage: currentPage.replace(/(\s|%20)Fr\.html/i, '.html')
+          }
+        : {
+            flagSrc: './rsc/france.png',
+            flagAlt: 'Passer en français',
+            // Add "%20Fr.html" for french version
+            targetPage: currentPage === 'index.html' ? 'index%20Fr.html' : currentPage.replace('.html', '%20Fr.html')
+          };
 
-    // Update both desktop and mobile flags
+    // 4. Update both desktop and mobile flags
     ['desktop', 'mobile'].forEach(type => {
-    const flagImg = document.getElementById(`lang-flag-${type}`);
-    const flagLink = document.getElementById(`lang-link-${type}`);
-    if (flagImg && flagLink) {
-    flagImg.src = langSettings.flagSrc;
-    flagImg.alt = langSettings.flagAlt;
-    flagLink.href = langSettings.targetPage;
-}
-});
+        const flagImg = document.getElementById(`lang-flag-${type}`);
+        const flagLink = document.getElementById(`lang-link-${type}`);
+
+        if (flagImg && flagLink) {
+            flagImg.src = langSettings.flagSrc;
+            flagImg.alt = langSettings.flagAlt;
+            flagLink.href = langSettings.targetPage;
+        }
+    });
 });
