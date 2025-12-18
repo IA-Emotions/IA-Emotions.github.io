@@ -221,7 +221,7 @@
                     s.step = STEPS.CONTINUE_RESPONSE;
                     return { text: response, useLLM: false };
                 } else {
-                    response = "Pas de problème. Y a-t-il une autre émotion ?";
+                    response = s.useFormal ? "Pas de problème. Voulez-vous me parler d'une autre émotion?" : "Pas de problème. Veux-tu me parler d'une autre émotion?";
                     s.step = STEPS.EMOTION_ALTERNATIVE;
                     return { text: response, useLLM: false };
                 }
@@ -237,7 +237,7 @@
                     s.step = STEPS.EMOTION_DESCRIBE;
                     return { text: response, useLLM: false };
                 } else {
-                    response = "Souhaitez-vous que je propose autre chose ou on arrête ?";
+                    response = s.useFormal ? "Souhaitez-vous que je propose autre chose ou on arrête ?" : "Souhaites-tu que je propose autre chose ou on arrête ?";
                     s.step = STEPS.END_OR_SUGGEST;
                     return { text: response, useLLM: false };
                 }
@@ -251,7 +251,7 @@
                     const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
                     s.emotion = emotion;
                     const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
-                    response = `Connaissez-vous l'émotion de ${ef} ?`;
+                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion de ${ef} ?` : `D'accord. Connais-tu par exemple l'émotion de ${ef} ?`;
                     s.step = STEPS.EMOTION_SUGGEST;
                     return { text: response, useLLM: false };
                 }
