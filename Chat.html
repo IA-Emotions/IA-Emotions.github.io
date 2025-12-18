@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai-motion Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gray: { 700: '#40414f', 800: '#343541', 900: '#202123' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #565869; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #acacbe; }
+        .markdown-body pre { background-color: black; padding: 10px; border-radius: 6px; overflow-x: auto; }
+        .markdown-body code { font-family: monospace; }
+        .markdown-body p { margin-bottom: 10px; }
+        #user-input:disabled { background-color: #374151; cursor: not-allowed; opacity: 0.6; }
+    </style>
+</head>
+<body class="bg-gray-800 text-gray-100 flex h-screen overflow-hidden text-sm">
+
+    <div class="hidden md:flex w-[260px] flex-col bg-gray-900 p-2">
+        <button id="new-chat-desktop" class="flex items-center gap-3 rounded-md border border-white/20 p-3 text-white transition-colors duration-200 hover:bg-gray-500/10 mb-2">
+            <span class="text-xl">+</span> New chat
+        </button>
+    </div>
+
+    <div class="flex flex-1 flex-col relative">
+        <div class="flex items-center justify-between border-b border-white/20 bg-gray-800 p-2 text-gray-100 md:hidden">
+            <button class="p-2 hover:bg-gray-900 rounded">☰</button>
+            <span>Ai-motion</span>
+            <button id="new-chat-mobile" class="p-2 hover:bg-gray-900 rounded">+</button>
+        </div>
+
+        <div id="chat-container" class="flex-1 overflow-y-auto w-full scroll-smooth">
+            <div class="flex flex-col items-center text-sm dark:bg-gray-800">
+                <div id="welcome-screen" class="flex flex-col items-center justify-center h-[80vh] text-center">
+                    <div class="bg-white text-gray-800 rounded-full p-4 mb-4">
+                        <svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="41" width="41" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path></svg>
+                    </div>
+                    <h1 class="text-4xl font-semibold mb-8">Ai-motion</h1>
+                    <div id="discussion-id-display" class="text-sm text-gray-400 mt-2"></div>
+                </div>
+
+                <div id="chat-log" class="w-full flex flex-col gap-0 pb-32"></div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-gray-800 pt-10 pb-6 px-4">
+            <div class="mx-auto max-w-3xl">
+                <div class="relative flex h-full w-full flex-col rounded-xl border border-black/10 bg-gray-700 shadow-md dark:border-gray-900/50">
+                    <textarea id="user-input" rows="1" class="m-0 w-full resize-none border-0 bg-transparent p-4 pr-10 text-white placeholder-gray-400 focus:ring-0 focus-visible:ring-0 outline-none overflow-y-hidden" placeholder="Send a message..." style="max-height: 200px;"></textarea>
+                    <button id="send-btn" class="absolute bottom-2.5 right-2.5 rounded-md p-1 bg-transparent text-gray-400 hover:bg-gray-900 disabled:hover:bg-transparent disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 mr-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyy1OKjOeWc34au_H7XX9F1A9sY_zV2-INJlU0SWlX801hWd0_oEklGecRCvDr5S9D6/exec";
+
+        const EMOTIONS = ["joy", "sadness", "fear", "disgust", "anger", "surprise"];
+        const EMOTION_TRANSLATIONS = {
+          "joy": "joie", "sadness": "tristesse", "fear": "peur",
+          "disgust": "dégoût", "anger": "colère", "surprise": "surprise"
+        };
+
+        const STEPS = {
+            GREETING: 1, NICKNAME_RESPONSE: 2, CAPTURE_NICKNAME: 2.5,
+            FORMALITY: 3, EMOTION_ASK: 4, EMOTION_DESCRIBE: 5,
+            EMOTION_SUGGEST: 6, SITUATION_ASK: 7, NATURAL_CONVERSATION: 8,
+            CONTINUE_RESPONSE: 10, EMOTION_ALTERNATIVE: 11,
+            END_OR_SUGGEST: 12, END: 13
+        };
+
+        const chatLog = document.getElementById('chat-log');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const welcomeScreen = document.getElementById('welcome-screen');
+
+        let state = {
+            discussionId: crypto.randomUUID(),
+            utteranceCount: 0,
+            step: STEPS.GREETING,
+            nickname: null,
+            useFormal: false,
+            useNickname: false,
+            emotion: null,
+            history: []
+        };
+
+        function getHardcodedResponse(userMessage) {
+            const s = state;
+            const msg = userMessage ? userMessage.toLowerCase() : "";
+            let response = null;
+
+            if (s.step === STEPS.GREETING) {
+                response = "Bonjour ! Je suis heureux de pouvoir échanger avec vous aujourd'hui. Avant que nous commencions, souhaitez-vous choisir un pseudonyme que je pourrais utiliser pendant notre conversation ? Répondez par 'oui' ou 'non'.";
+                s.step = STEPS.NICKNAME_RESPONSE;
+                console.log("New discussion ID:", s.discussionId);
+                return { text: response, useLLM: false };
+            }
+            if (s.step === STEPS.NICKNAME_RESPONSE) {
+                if (msg.includes("oui")) {
+                    s.useNickname = true;
+                    response = "Parfait ! Quel pseudonyme souhaitez-vous utiliser ?";
+                    s.step = STEPS.CAPTURE_NICKNAME;
+                } else {
+                    s.useNickname = false;
+                    response = `Pas de souci. Préférez-vous que je vous dise « tu » ou que je vous vouvoie ?`;
+                    s.step = STEPS.FORMALITY;
+                }
+                return { text: response, useLLM: false };
+            }
+            if (s.step === STEPS.CAPTURE_NICKNAME) {
+                s.nickname = userMessage.trim();
+                response = `Enchanté·e, ${s.nickname} ! Pour la suite, préférez-vous que l'on se tutoie (tu) ou que l'on se vouvoie (vous) ?`;
+                s.step = STEPS.FORMALITY;
+                return { text: response, useLLM: false };
+            }
+            if (s.step === STEPS.FORMALITY) {
+                s.useFormal = msg.includes("vouvoie") || msg.includes("vous");
+                const namePart = (s.useNickname && s.nickname) ? `, ${s.nickname}` : "";
+                response = `Très bien${namePart}. Comment ${s.useFormal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? Une émotion particulière ?`;
+                s.step = STEPS.EMOTION_ASK;
+                return { text: response, useLLM: false };
+            }
+            if (s.step === STEPS.EMOTION_ASK) {
+                if (msg.includes("oui")) {
+                    response = s.useFormal ? "Dites-m'en un peu plus. De quelle émotion s'agit-il ?" : "Dis-moi en un peu plus. De quelle émotion s'agit-il ?";
+                    s.step = STEPS.EMOTION_DESCRIBE;
+                    return { text: response, useLLM: false };
+                } else {
+                    const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
+                    s.emotion = emotion;
+                    const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
+                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion de ${ef} ?` : `D'accord. Connais-tu par exemple l'émotion de ${ef} ?`;
+                    s.step = STEPS.EMOTION_SUGGEST;
+                    return { text: response, useLLM: false };
+                }
+            }
+            if (s.step === STEPS.EMOTION_DESCRIBE) {
+                response = s.useFormal ? "Qu'est-ce qui vous a amené·e à ressentir cela ?" : "Qu'est-ce qui t'a amené·e à ressentir cela ?";
+                s.step = STEPS.SITUATION_ASK;
+                return { text: response, useLLM: false };
+            }
+            if (s.step === STEPS.EMOTION_SUGGEST) {
+                if (msg.includes("oui")) {
+                    response = s.useFormal ? "Voudriez-vous me parler d'une situation où vous avez ressenti cette émotion ?" : "Voudrais-tu me parler d'une situation où tu as ressenti cette émotion ?";
+                    s.step = STEPS.CONTINUE_RESPONSE;
+                    return { text: response, useLLM: false };
+                } else {
+                    response = "Pas de problème. Y a-t-il une autre émotion ?";
+                    s.step = STEPS.EMOTION_ALTERNATIVE;
+                    return { text: response, useLLM: false };
+                }
+            }
+            if (s.step === STEPS.SITUATION_ASK || s.step === STEPS.CONTINUE_RESPONSE) {
+                response = s.useFormal ? "Merci de partager cela. Je suis là pour écouter." : "Merci de partager cela. Je suis là pour écouter.";
+                s.step = STEPS.NATURAL_CONVERSATION;
+                return { text: response, useLLM: true };
+            }
+            if (s.step === STEPS.EMOTION_ALTERNATIVE) {
+                if (msg.includes("oui")) {
+                    response = "Quelle est cette émotion ?";
+                    s.step = STEPS.EMOTION_DESCRIBE;
+                    return { text: response, useLLM: false };
+                } else {
+                    response = "Souhaitez-vous que je propose autre chose ou on arrête ?";
+                    s.step = STEPS.END_OR_SUGGEST;
+                    return { text: response, useLLM: false };
+                }
+            }
+            if (s.step === STEPS.END_OR_SUGGEST) {
+                if (msg.includes("fin")) {
+                    response = "D'accord. Merci d'avoir échangé avec moi.";
+                    s.step = STEPS.END;
+                    return { text: response, useLLM: false };
+                } else {
+                    const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
+                    s.emotion = emotion;
+                    const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
+                    response = `Connaissez-vous l'émotion de ${ef} ?`;
+                    s.step = STEPS.EMOTION_SUGGEST;
+                    return { text: response, useLLM: false };
+                }
+            }
+            s.step = STEPS.NATURAL_CONVERSATION;
+            return { text: null, useLLM: true };
+        }
+
+        async function processTurn(userText = null) {
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            welcomeScreen.classList.add('hidden');
+            chatLog.classList.remove('hidden');
+
+            // 1. Handle User Input
+            if (userText) {
+                state.utteranceCount++;
+                appendMessage('user', userText);
+                state.history.push({ role: 'user', content: userText });
+
+                // AWAIT: We wait for the logging to initiate before continuing logic
+                // This ensures User Log is sent before Bot Log
+                await logToSheet(state.discussionId, state.utteranceCount, userText);
+            }
+
+            // 2. Determine Bot Response
+            const logic = getHardcodedResponse(userText);
+
+            if (!logic.useLLM) {
+                // === HARDCODED PATH ===
+                await new Promise(r => setTimeout(r, 600));
+
+                state.utteranceCount++;
+                appendMessage('assistant', logic.text);
+                state.history.push({ role: 'assistant', content: logic.text });
+
+                await logToSheet(state.discussionId, state.utteranceCount, logic.text);
+                resetUI();
+
+            } else {
+                // === LLM PATH ===
+                const botMessageDiv = appendMessage('assistant', '...');
+                const botContentDiv = botMessageDiv.querySelector('.markdown-body');
+
+                try {
+                    let sysPrompt = "Make short answers (3 lines). ALWAYS end with a question.";
+                    if (state.useNickname) sysPrompt += ` Call user '${state.nickname}'.`;
+                    sysPrompt += state.useFormal ? " Use 'vous'." : " Use 'tu'.";
+
+                    const messagesToSend = [
+                        { role: 'system', content: sysPrompt },
+                        ...state.history
+                    ];
+
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        redirect: "follow",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({
+                            action: 'chat',
+                            messages: messagesToSend
+                        })
+                    });
+
+                    const data = await response.json();
+                    const botText = data.message ? data.message.content : (data.content || "Error");
+
+                    botContentDiv.innerHTML = marked.parse(botText);
+                    hljs.highlightAll();
+
+                    state.utteranceCount++;
+                    state.history.push({ role: 'assistant', content: botText });
+
+                    await logToSheet(state.discussionId, state.utteranceCount, botText);
+
+                } catch (error) {
+                    console.error(error);
+                    botContentDiv.innerHTML = "<span class='text-red-500'>Error: Could not reach AI backend.</span>";
+                } finally {
+                    resetUI();
+                }
+            }
+        }
+
+        // Updated Helper: Now returns a Promise so we can "await" it
+        async function logToSheet(id, utteranceNum, text) {
+            try {
+                // We await the fetch. Even with no-cors, await ensures the request
+                // is dispatched by the browser before the code continues.
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: 'log',
+                        discussion_id: id,
+                        utterance_number: utteranceNum,
+                        message: text
+                    })
+                });
+            } catch(e) {
+                console.log("Logging failed", e);
+            }
+        }
+
+        function appendMessage(role, text) {
+            const isUser = role === 'user';
+            const bgColor = isUser ? '' : 'bg-[#444654]';
+
+            const icon = isUser
+                ? '<div class="h-8 w-8 rounded bg-purple-600 flex items-center justify-center font-bold">U</div>'
+                : '<div class="h-8 w-8 rounded bg-green-500 flex items-center justify-center"><svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="0 0 24 24" class="h-5 w-5 text-white"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path></svg></div>';
+
+            const html = `
+                <div class="w-full text-gray-100 border-b border-black/10 dark:border-gray-900/50 ${bgColor}">
+                    <div class="flex p-4 gap-4 text-base md:gap-6 md:max-w-2xl lg:max-w-[38rem] xl:max-w-3xl m-auto">
+                        <div class="flex-shrink-0 flex flex-col relative items-end">
+                            <div class="w-[30px]">${icon}</div>
+                        </div>
+                        <div class="relative flex-1 overflow-hidden">
+                            <div class="markdown-body w-full">${marked.parse(text)}</div>
+                        </div>
+                    </div>
+                </div>`;
+            chatLog.insertAdjacentHTML('beforeend', html);
+            window.scrollTo(0, document.body.scrollHeight);
+            return chatLog.lastElementChild;
+        }
+
+        function resetUI() {
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            userInput.value = '';
+            userInput.focus();
+        }
+
+        function resetChat() {
+            state.discussionId = crypto.randomUUID();
+            state.step = STEPS.GREETING;
+            state.history = [];
+            state.utteranceCount = 0;
+            chatLog.innerHTML = '';
+            processTurn(null);
+        }
+
+        sendBtn.addEventListener('click', () => {
+            const text = userInput.value.trim();
+            if (text) processTurn(text);
+        });
+
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const text = userInput.value.trim();
+                if (text) processTurn(text);
+            }
+        });
+
+        document.getElementById('new-chat-desktop').addEventListener('click', resetChat);
+        document.getElementById('new-chat-mobile').addEventListener('click', resetChat);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            processTurn(null);
+        });
+    </script>
+</body>
+</html>
