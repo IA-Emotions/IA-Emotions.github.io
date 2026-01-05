@@ -99,7 +99,7 @@
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const welcomeScreen = document.getElementById('welcome-screen');
-        const endChatHint = document.getElementById('end-chat-hint'); // Reference to hint
+        const endChatHint = document.getElementById('end-chat-hint');
 
         let state = {
             discussionId: crypto.randomUUID(),
@@ -207,7 +207,7 @@
             if (s.step === STEPS.END_OR_SUGGEST) {
                 if (msg.includes("fin")) {
                     s.step = STEPS.END;
-                    response = "Merci d'avoir participé! \n\nLa suite se passe ici: <a href='#' class='underline text-blue-400'>clickable link to be added later</a>";
+                    response = "Merci d'avoir participé! \n\n La suite se passe ici: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Cliquez ici pour continuer</a>";
                     return { text: response, useLLM: false };
                 } else {
                     const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
@@ -229,7 +229,7 @@
             welcomeScreen.classList.add('hidden');
             chatLog.classList.remove('hidden');
 
-            // 1. Handle User Input
+            // 1. User Input
             if (userText) {
                 state.utteranceCount++;
                 appendMessage('user', userText);
@@ -238,7 +238,7 @@
                 await logToSheet(state.discussionId, state.utteranceCount, userText);
             }
 
-            // 2. Determine Bot Response
+            // 2. Bot Response
             const logic = getHardcodedResponse(userText);
 
             if (!logic.useLLM) {
