@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://unpkg.com/wanakana"></script>
 
     <script>
         tailwind.config = {
@@ -30,41 +31,67 @@
         .markdown-body code { font-family: monospace; }
         .markdown-body p { margin-bottom: 10px; }
         #user-input:disabled { background-color: #374151; cursor: not-allowed; opacity: 0.6; }
+
+        @keyframes pulse-red {
+            0% { color: #9ca3af; }
+            50% { color: #ef4444; }
+            100% { color: #9ca3af; }
+        }
+        .timer-warning { animation: pulse-red 2s infinite; }
     </style>
 </head>
 <body class="bg-gray-800 text-gray-100 flex h-screen overflow-hidden text-sm">
 
     <div class="hidden md:flex w-[260px] flex-col bg-gray-900 p-2">
-        <button id="new-chat-desktop" class="flex items-center gap-3 rounded-md border border-white/20 p-3 text-white transition-colors duration-200 hover:bg-gray-500/10 mb-2">
-            <span class="text-xl">+</span> New chat
+        <button id="new-chat-desktop" class="flex items-center gap-3 rounded-md border border-white/20 p-3 text-white transition-colors duration-200 hover:bg-gray-500/10 mb-4">
+            <span class="text-xl">+</span> <span class="lang-new-chat">New chat</span>
         </button>
-        <p id="end-chat-hint" class="text-xs text-gray-400 px-3 hidden">
-            Pour mettre fin à la discussion, dites "fin de la discussion"
-        </p>
+
+        <div class="px-3 mb-4">
+            <label class="text-xs text-gray-400 mb-1 block">Language / Langue</label>
+            <select id="lang-selector" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-1 text-xs focus:ring-1 focus:ring-white">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="ja">日本語 (Japanese)</option>
+            </select>
+        </div>
+
+        <div class="mt-auto px-3 pb-4">
+            <div id="timer-display" class="text-xs text-gray-400 font-mono mb-2">00:00</div>
+            <p id="end-chat-hint" class="text-xs text-gray-500 hidden lang-end-hint">
+                Pour finir, dites "au revoir".
+            </p>
+        </div>
     </div>
 
     <div class="flex flex-1 flex-col relative">
         <div class="flex items-center justify-between border-b border-white/20 bg-gray-800 p-2 text-gray-100 md:hidden">
-            <button class="p-2 hover:bg-gray-900 rounded">☰</button>
+            <div class="text-xs font-mono" id="mobile-timer">00:00</div>
             <span>Ai-motion</span>
             <button id="new-chat-mobile" class="p-2 hover:bg-gray-900 rounded">+</button>
         </div>
 
         <div id="chat-container" class="flex-1 overflow-y-auto w-full scroll-smooth">
             <div class="flex flex-col items-center text-sm dark:bg-gray-800">
-                <div id="welcome-screen" class="flex flex-col items-center justify-center h-[80vh] text-center">
+                <div id="welcome-screen" class="flex flex-col items-center justify-center h-[80vh] text-center px-4">
                     <div class="bg-white text-gray-800 rounded-full p-4 mb-4">
                         <svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="41" width="41" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path></svg>
                     </div>
-                    <h1 class="text-4xl font-semibold mb-8">Ai-motion</h1>
-                    <div id="discussion-id-display" class="text-sm text-gray-400 mt-2"></div>
+                    <h1 class="text-4xl font-semibold mb-4">Ai-motion</h1>
+                    <p class="text-gray-400 mb-8 max-w-md lang-welcome-sub">
+                        Une expérience conversationnelle sur les émotions.
+                    </p>
+                    <button id="start-btn" class="bg-white text-gray-800 px-6 py-2 rounded hover:bg-gray-200 transition font-medium lang-start-btn">
+                        Commencer la discussion
+                    </button>
+                    <div id="discussion-id-display" class="text-xs text-gray-600 mt-8 font-mono"></div>
                 </div>
 
-                <div id="chat-log" class="w-full flex flex-col gap-0 pb-32"></div>
+                <div id="chat-log" class="w-full flex flex-col gap-0 pb-32 hidden"></div>
             </div>
         </div>
 
-        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-gray-800 pt-10 pb-6 px-4">
+        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-gray-800 via-gray-800 to-transparent pt-10 pb-6 px-4">
             <div class="mx-auto max-w-3xl">
                 <div class="relative flex h-full w-full flex-col rounded-xl border border-black/10 bg-gray-700 shadow-md dark:border-gray-900/50">
                     <textarea id="user-input" rows="1" class="m-0 w-full resize-none border-0 bg-transparent p-4 pr-10 text-white placeholder-gray-400 focus:ring-0 focus-visible:ring-0 outline-none overflow-y-hidden" placeholder="Send a message..." style="max-height: 200px;"></textarea>
@@ -72,205 +99,411 @@
                         <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 mr-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
                 </div>
+                <div class="flex justify-between px-2 mt-1">
+                     <span class="text-[10px] text-gray-500" id="typing-indicator"></span>
+                     <span class="text-[10px] text-gray-500" id="char-count">0 chars</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyy1OKjOeWc34au_H7XX9F1A9sY_zV2-INJlU0SWlX801hWd0_oEklGecRCvDr5S9D6/exec";
+    <div id="toast-notification" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-6 py-4 rounded-lg shadow-xl opacity-0 hidden text-center max-w-[80%]">
+        <span id="toast-message">Minimum 50 chars</span>
+    </div>
 
-        const EMOTIONS = [
-          "admiration", "adoration", "aesthetic appreciation", "amusement", "anger", "anxiety", "awe", "awkwardness", "boredom", "calmness", "confusion", "craving", "disgust", "empathic pain", "entrancement", "excitement", "fear", "horror", "interest", "joy", "nostalgia", "relief", "romance", "sadness", "satisfaction", "neutral", "surprise"
+    <script>
+        // CONFIGURATION
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyy1OKjOeWc34au_H7XX9F1A9sY_zV2-INJlU0SWlX801hWd0_oEklGecRCvDr5S9D6/exec";
+        const SESSION_DURATION_MS = 10 * 60 * 1000;
+        const WARNING_TIME_MS = 7 * 60 * 1000;
+
+        // --- I18N & TEXT CONTENT ---
+        const I18N = {
+            fr: {
+                newChat: " Nouvelle discussion",
+                welcomeSub: "Une expérience conversationnelle sur les émotions.",
+                startBtn: "Commencer la discussion",
+                placeholder: "Écrivez votre message...",
+                endHint: "Dites 'au revoir' pour terminer.",
+                greeting: "Bonjour ! Je suis heureux d'échanger avec vous. Comment souhaitez-vous que je vous appelle ? (Vous pouvez choisir un pseudonyme).",
+                formality: (name) => `Enchanté·e ${name}. Préférez-vous que je vous dise « tu » ou « vous » ?`,
+                askEmotion: (formal) => `C'est noté. Comment ${formal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? (Joie, fatigue, stress...)`,
+                askDescribe: (formal) => `${formal ? "Dites" : "Dis"}-m'en un peu plus. Qu'est-ce qui provoque ce sentiment ?`,
+                suggestEmotion: (formal, em, trans) => `Je vois. Cela me fait penser à l'émotion "${trans}". ${formal ? "Connaissez-vous" : "Connais-tu"} cette émotion ?`,
+                continue: (formal) => `Intéressant. ${formal ? "Voudriez-vous" : "Voudrais-tu"} me raconter une situation spécifique où ${formal ? "vous avez" : "tu as"} ressenti cela ? N'hésitez pas à détailler.`,
+                alternative: (formal) => `Pas de souci. ${formal ? "Souhaitez-vous" : "Souhaites-tu"} parler d'une autre émotion ?`,
+                endSuggest: (formal) => `${formal ? "Souhaitez-vous" : "Souhaites-tu"} que je propose autre chose ou préfèrez-vous arrêter ?`,
+                listen: "Je vous écoute.",
+                timeUpWarning: "Le temps passe vite ! Il nous reste quelques minutes.",
+                timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
+                finalMessage: "Merci d'avoir participé ! <br><br> La suite se passe ici : <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>",
+                errBackend: "Erreur de connexion au cerveau IA.",
+                minCharWarning: "Veuillez écrire un peu plus (au moins 50 caractères).",
+            },
+            en: {
+                newChat: "New Chat",
+                welcomeSub: "A conversational experience about emotions.",
+                startBtn: "Start Conversation",
+                placeholder: "Type your message...",
+                endHint: "Say 'goodbye' to finish.",
+                greeting: "Hello! I'm happy to chat with you. How would you like me to call you? (You can pick a nickname).",
+                formality: (name) => `Nice to meet you, ${name}. How are you feeling right now?`,
+                askEmotion: (formal) => `How are you feeling right now? (Joy, tired, stressed...)`,
+                askDescribe: (formal) => `Tell me more. What is causing this feeling?`,
+                suggestEmotion: (formal, em, trans) => `I see. That reminds me of the emotion "${em}". Are you familiar with it?`,
+                continue: (formal) => `Interesting. Would you like to tell me about a specific situation where you felt this? Feel free to go into detail.`,
+                alternative: (formal) => `No problem. Would you like to talk about another emotion?`,
+                endSuggest: (formal) => `Would you like me to suggest something else, or shall we stop here?`,
+                listen: "I'm listening.",
+                timeUpWarning: "Time flies! We have a few minutes left.",
+                timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
+                finalMessage: "Thank you for participating! <br><br> Next step: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Click here for the survey</a>",
+                errBackend: "Error connecting to AI backend.",
+                minCharWarning: "Please write a bit more (at least 50 characters).",
+            },
+            ja: {
+                newChat: "新しいチャット",
+                welcomeSub: "感情についての会話体験。",
+                startBtn: "会話を始める",
+                placeholder: "メッセージを入力...",
+                endHint: "終了するには「終了」と言ってください。",
+                greeting: "こんにちは！お話しできて嬉しいです。なんとお呼びすればいいですか？（ニックネームでも構いません）。",
+                formality: (name) => `${name}さん、はじめまして。今の気分はいかがですか？（喜び、疲れ、ストレスなど）`,
+                askEmotion: (formal) => `今の気分はいかがですか？`,
+                askDescribe: (formal) => `もう少し詳しく教えてください。その気持ちの原因は何ですか？`,
+                suggestEmotion: (formal, em, trans) => `なるほど。それは「${em}」という感情に似ていますね。ご存知ですか？`,
+                continue: (formal) => `興味深いです。実際にその感情を抱いた具体的な場面について教えていただけますか？詳しく書いていただいて構いません。`,
+                alternative: (formal) => `わかりました。別の感情について話しますか？`,
+                endSuggest: (formal) => `他の提案をしましょうか？それともここで終わりますか？`,
+                listen: "聞いています。",
+                timeUpWarning: "時間が経つのは早いですね！残り数分です。",
+                timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
+                finalMessage: "ご参加ありがとうございました！ <br><br> 次のステップ: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>アンケートはこちら</a>",
+                errBackend: "AIバックエンドへの接続エラー。",
+                minCharWarning: "もう少し長く書いてください（50文字以上）。",
+            }
+        };
+
+        const EMOTIONS_LIST = [
+            "admiration", "adoration", "aesthetic appreciation", "amusement", "anger", "anxiety", "awe", "awkwardness", "boredom", "calmness", "confusion", "craving", "disgust", "empathic pain", "entrancement", "excitement", "fear", "horror", "interest", "joy", "nostalgia", "relief", "romance", "sadness", "satisfaction", "neutral", "surprise"
         ];
 
-        const EMOTION_TRANSLATIONS = {
-          "admiration": "admiration", "adoration": "adoration", "aesthetic appreciation": "appréciation esthétique", "amusement": "amusement", "anger": "colère", "anxiety": "anxiété", "awe": "émerveillement", "awkwardness": "gêne", "boredom": "ennui", "calmness": "calme", "confusion": "confusion", "craving": "envie", "disgust": "dégoût", "empathic pain": "douleur empathique", "entrancement": "fascination", "excitement": "excitation", "fear": "peur", "horror": "horreur", "interest": "intérêt", "joy": "joie", "nostalgia": "nostalgie", "relief": "soulagement", "romance": "romance", "sadness": "tristesse", "satisfaction": "satisfaction", "neutral": "neutre", "surprise": "surprise"
+        const FR_EMOTION_MAP = {
+            "admiration": "admiration", "adoration": "adoration", "aesthetic appreciation": "appréciation esthétique", "amusement": "amusement", "anger": "colère", "anxiety": "anxiété", "awe": "émerveillement", "awkwardness": "gêne", "boredom": "ennui", "calmness": "calme", "confusion": "confusion", "craving": "envie", "disgust": "dégoût", "empathic pain": "douleur empathique", "entrancement": "fascination", "excitement": "excitation", "fear": "peur", "horror": "horreur", "interest": "intérêt", "joy": "joie", "nostalgia": "nostalgie", "relief": "soulagement", "romance": "romance", "sadness": "tristesse", "satisfaction": "satisfaction", "neutral": "neutre", "surprise": "surprise"
         };
 
         const STEPS = {
-            GREETING: 1, NICKNAME_RESPONSE: 2, CAPTURE_NICKNAME: 2.5,
-            FORMALITY: 3, EMOTION_ASK: 4, EMOTION_DESCRIBE: 5,
+            GREETING: 1, CAPTURE_NICKNAME: 2, FORMALITY: 3, EMOTION_ASK: 4, EMOTION_DESCRIBE: 5,
             EMOTION_SUGGEST: 6, SITUATION_ASK: 7, NATURAL_CONVERSATION: 8,
-            CONTINUE_RESPONSE: 10, EMOTION_ALTERNATIVE: 11,
-            END_OR_SUGGEST: 12, END: 13
+            EMOTION_ALTERNATIVE: 11, END_OR_SUGGEST: 12, LAST_TURN: 98, END: 99
         };
 
+        // --- DOM ELEMENTS ---
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const welcomeScreen = document.getElementById('welcome-screen');
-        const endChatHint = document.getElementById('end-chat-hint');
+        const startBtn = document.getElementById('start-btn');
+        const langSelector = document.getElementById('lang-selector');
+        const timerDisplay = document.getElementById('timer-display');
+        const mobileTimer = document.getElementById('mobile-timer');
+        const charCount = document.getElementById('char-count');
 
+        // --- STATE MANAGEMENT ---
         let state = {
-            discussionId: crypto.randomUUID(),
+            discussionId: null,
             utteranceCount: 0,
             step: STEPS.GREETING,
             nickname: null,
-            useFormal: false,
-            useNickname: false,
+            useFormal: true,
             emotion: null,
             history: [],
-            llmTurnCount: 0
+            llmTurnCount: 0,
+            startTime: null,
+            lang: 'fr',
+            timerInterval: null
         };
 
-        function getHardcodedResponse(userMessage) {
-            const s = state;
+        // --- INIT & LOCAL STORAGE ---
+        function init() {
+            // Restore from localStorage if exists
+            const saved = localStorage.getItem('ai_motion_state');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.step !== STEPS.END) {
+                        state = parsed;
+                        restoreChatLog();
+                        if(state.startTime) startTimer(false);
+                        updateLanguageUI();
+
+                        if(state.history.length > 0) {
+                            welcomeScreen.classList.add('hidden');
+                            chatLog.classList.remove('hidden');
+                        }
+                    } else {
+                        resetState();
+                    }
+                } catch(e) { console.error("Load error", e); resetState(); }
+            } else {
+                resetState();
+            }
+        }
+
+        function resetState() {
+            state = {
+                discussionId: crypto.randomUUID(),
+                utteranceCount: 0,
+                step: STEPS.GREETING,
+                nickname: null,
+                useFormal: true,
+                emotion: null,
+                history: [],
+                llmTurnCount: 0,
+                startTime: null,
+                lang: langSelector.value,
+                timerInterval: null,
+                warningSent: false
+            };
+            document.getElementById('discussion-id-display').textContent = "ID: " + state.discussionId;
+        }
+
+        function saveState() {
+            const { timerInterval, ...toSave } = state;
+            localStorage.setItem('ai_motion_state', JSON.stringify(toSave));
+        }
+
+        function restoreChatLog() {
+            chatLog.innerHTML = '';
+            state.history.forEach(msg => {
+                if(msg.role !== 'system') {
+                    appendMessage(msg.role, msg.content, false);
+                }
+            });
+            document.getElementById('discussion-id-display').textContent = "ID: " + state.discussionId;
+        }
+
+        // --- LANGUAGE & TRANSLATION ---
+        function t(key, ...args) {
+            const langObj = I18N[state.lang] || I18N.fr;
+            let val = langObj[key];
+            if (typeof val === 'function') return val(...args);
+            return val || key;
+        }
+
+        function updateLanguageUI() {
+            const L = I18N[state.lang];
+            document.querySelector('.lang-new-chat').textContent = L.newChat;
+            document.querySelector('.lang-welcome-sub').textContent = L.welcomeSub;
+            document.querySelector('.lang-start-btn').textContent = L.startBtn;
+            document.querySelector('.lang-end-hint').textContent = L.endHint;
+            userInput.placeholder = L.placeholder;
+
+        }
+
+        langSelector.addEventListener('change', (e) => {
+            state.lang = e.target.value;
+            updateLanguageUI();
+            if (state.utteranceCount === 0) resetChat();
+        });
+
+        // --- TIMER ---
+        function startTimer(reset = true) {
+            if (reset) {
+                state.startTime = Date.now();
+                state.warningSent = false; // Reset flag on new timer
+            }
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            state.timerInterval = setInterval(() => {
+                if (!state.startTime) return;
+
+                const elapsed = Date.now() - state.startTime;
+                const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
+
+                const m = Math.floor(remaining / 60000);
+                const s = Math.floor((remaining % 60000) / 1000);
+                const text = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                timerDisplay.textContent = text;
+                mobileTimer.textContent = text;
+
+                // Trigger warning text message at 7 minutes
+                if (elapsed > WARNING_TIME_MS) {
+                    timerDisplay.classList.add('timer-warning');
+
+                    if (!state.warningSent) {
+                        state.warningSent = true;
+                        processTurn(null, t('timeUpWarning'));
+                    }
+                }
+
+                if (remaining <= 0 && state.step !== STEPS.LAST_TURN && state.step !== STEPS.END) {
+                    forceTimeUp();
+                }
+            }, 1000);
+        }
+
+        function forceTimeUp() {
+             clearInterval(state.timerInterval);
+             state.step = STEPS.LAST_TURN;
+             const msg = t('timeUpFinal');
+             processTurn(null, msg);
+        }
+
+        // --- CORE LOGIC ---
+        function getResponseLogic(userMessage) {
             const msg = userMessage ? userMessage.toLowerCase().trim() : "";
-            let response = null;
 
-            if (msg === "fin de la discussion") {
-                s.step = STEPS.END;
-            }
+            const endPattern = /\b(fin|goodbye|bye|quit|terminé|terminer|fini)\b|おわり|終了/i;
 
-            if (s.step === STEPS.END) {
-                response = "Merci d'avoir participé! \n\n La suite se passe ici: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Cliquez ici pour continuer</a>";
-                return { text: response, useLLM: false };
+            if (msg.match(endPattern) && state.step !== STEPS.END) {
+                 state.step = STEPS.END;
+                 return { text: t('finalMessage'), useLLM: false };
             }
 
-            if (s.step === STEPS.GREETING) {
-                response = "Bonjour ! Je suis heureux de pouvoir échanger avec vous aujourd'hui. Avant que nous commencions, souhaitez-vous choisir un pseudonyme que je pourrais utiliser pendant notre conversation ? Répondez par 'oui' ou 'non'.";
-                s.step = STEPS.NICKNAME_RESPONSE;
-                console.log("New discussion ID:", s.discussionId);
-                return { text: response, useLLM: false };
+            if (state.step === STEPS.LAST_TURN) {
+                 state.step = STEPS.END;
+                 return { text: t('finalMessage'), useLLM: false };
             }
-            if (s.step === STEPS.NICKNAME_RESPONSE) {
-                if (msg.includes("oui")) {
-                    s.useNickname = true;
-                    response = "Parfait ! Quel pseudonyme souhaitez-vous utiliser ?";
-                    s.step = STEPS.CAPTURE_NICKNAME;
+
+            if (state.step === STEPS.GREETING) {
+                state.step = STEPS.CAPTURE_NICKNAME;
+                startTimer(true);
+                return { text: t('greeting'), useLLM: false };
+            }
+
+            if (state.step === STEPS.CAPTURE_NICKNAME) {
+                state.nickname = userMessage.trim();
+
+                if (state.lang === 'en') {
+                     state.useFormal = false;
+                     state.step = STEPS.EMOTION_ASK;
+                     return { text: t('formality', state.nickname), useLLM: false };
+                } else if (state.lang === 'ja') {
+                     state.useFormal = true;
+                     state.step = STEPS.EMOTION_ASK;
+                     return { text: t('formality', state.nickname), useLLM: false };
                 } else {
-                    s.useNickname = false;
-                    response = `Pas de souci. Préférez-vous que je vous dise « tu » ou que je vous vouvoie ?`;
-                    s.step = STEPS.FORMALITY;
-                }
-                return { text: response, useLLM: false };
-            }
-            if (s.step === STEPS.CAPTURE_NICKNAME) {
-                s.nickname = userMessage.trim();
-                response = `Enchanté·e, ${s.nickname} ! Pour la suite, préférez-vous que l'on se tutoie (tu) ou que l'on se vouvoie (vous) ?`;
-                s.step = STEPS.FORMALITY;
-                return { text: response, useLLM: false };
-            }
-            if (s.step === STEPS.FORMALITY) {
-                s.useFormal = msg.includes("vouvoie") || msg.includes("vous");
-                const namePart = (s.useNickname && s.nickname) ? `, ${s.nickname}` : "";
-                response = `Très bien${namePart}. Comment ${s.useFormal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? Une émotion particulière ? (répondre par 'oui' ou 'non')`;
-                s.step = STEPS.EMOTION_ASK;
-                return { text: response, useLLM: false };
-            }
-            if (s.step === STEPS.EMOTION_ASK) {
-                if (msg.includes("oui")) {
-                    response = s.useFormal ? "Dites-m'en un peu plus. De quelle émotion s'agit-il ?" : "Dis-moi en un peu plus. De quelle émotion s'agit-il ?";
-                    s.step = STEPS.EMOTION_DESCRIBE;
-                    return { text: response, useLLM: false };
-                } else {
-                    const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
-                    s.emotion = emotion;
-                    const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
-                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion \" ${ef} \"?` : `D'accord. Connais-tu par exemple l'émotion \" ${ef} \" ? (répondre par 'oui' ou 'non')`;
-                    s.step = STEPS.EMOTION_SUGGEST;
-                    return { text: response, useLLM: false };
-                }
-            }
-            if (s.step === STEPS.EMOTION_DESCRIBE) {
-                response = s.useFormal ? "Qu'est-ce qui vous a amené·e à ressentir cela ?" : "Qu'est-ce qui t'a amené·e à ressentir cela ?";
-                s.step = STEPS.SITUATION_ASK;
-                return { text: response, useLLM: false };
-            }
-            if (s.step === STEPS.EMOTION_SUGGEST) {
-                if (msg.includes("oui")) {
-                    response = s.useFormal ? "Voudriez-vous me parler d'une situation où vous avez ressenti cette émotion ? N'hésitez pas à faire une réponse longue." : "Voudrais-tu me parler d'une situation où tu as ressenti cette émotion ? N'hésites pas à faire une réponse longue.";
-                    s.step = STEPS.CONTINUE_RESPONSE;
-                    return { text: response, useLLM: false };
-                } else {
-                    response = s.useFormal ? "Pas de problème. Voulez-vous me parler d'une autre émotion?" : "Pas de problème. Veux-tu me parler d'une autre émotion?";
-                    s.step = STEPS.EMOTION_ALTERNATIVE;
-                    return { text: response, useLLM: false };
-                }
-            }
-            if (s.step === STEPS.SITUATION_ASK || s.step === STEPS.CONTINUE_RESPONSE) {
-                response = s.useFormal ? "Merci de partager cela. Je suis là pour écouter." : "Merci de partager cela. Je suis là pour écouter.";
-                s.step = STEPS.NATURAL_CONVERSATION;
-                return { text: response, useLLM: true };
-            }
-            if (s.step === STEPS.EMOTION_ALTERNATIVE) {
-                if (msg.includes("oui")) {
-                    response = "Quelle est cette émotion ?";
-                    s.step = STEPS.EMOTION_DESCRIBE;
-                    return { text: response, useLLM: false };
-                } else {
-                    response = s.useFormal ? "Souhaitez-vous que je propose autre chose ou on arrête ?" : "Souhaites-tu que je propose autre chose ou on arrête ?";
-                    s.step = STEPS.END_OR_SUGGEST;
-                    return { text: response, useLLM: false };
-                }
-            }
-            if (s.step === STEPS.END_OR_SUGGEST) {
-                if (msg.includes("fin")) {
-                    s.step = STEPS.END;
-                    response = "Merci d'avoir participé! \n\n La suite se passe ici: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Cliquez ici pour continuer</a>";
-                    return { text: response, useLLM: false };
-                } else {
-                    const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
-                    s.emotion = emotion;
-                    const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
-                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion \" ${ef} \" ?` : `D'accord. Connais-tu par exemple l'émotion \" ${ef} \" ?`;
-                    s.step = STEPS.EMOTION_SUGGEST;
-                    return { text: response, useLLM: false };
+                     state.step = STEPS.FORMALITY;
+                     return { text: t('formality', state.nickname), useLLM: false };
                 }
             }
 
-            s.step = STEPS.NATURAL_CONVERSATION;
+            if (state.step === STEPS.FORMALITY) {
+                state.useFormal = !msg.includes("tu") && !msg.includes("tutoie");
+                state.step = STEPS.EMOTION_ASK;
+                return { text: t('askEmotion', state.useFormal), useLLM: false };
+            }
+
+            if (state.step === STEPS.EMOTION_ASK) {
+                state.step = STEPS.EMOTION_DESCRIBE;
+                return { text: t('askDescribe', state.useFormal), useLLM: false };
+            }
+
+            if (state.step === STEPS.EMOTION_DESCRIBE) {
+                const rnd = EMOTIONS_LIST[Math.floor(Math.random() * EMOTIONS_LIST.length)];
+                state.emotion = rnd;
+                const translatedEm = (state.lang === 'fr' && FR_EMOTION_MAP[rnd]) ? FR_EMOTION_MAP[rnd] : rnd;
+
+                state.step = STEPS.EMOTION_SUGGEST;
+                return { text: t('suggestEmotion', state.useFormal, rnd, translatedEm), useLLM: false };
+            }
+
+            if (state.step === STEPS.EMOTION_SUGGEST) {
+                if (msg.includes("oui") || msg.includes("yes") || msg.includes("hai") || msg.includes("はい") || msg.length > 10) {
+                     state.step = STEPS.SITUATION_ASK;
+                     return { text: t('continue', state.useFormal), useLLM: false };
+                } else {
+                     state.step = STEPS.EMOTION_ALTERNATIVE;
+                     return { text: t('alternative', state.useFormal), useLLM: false };
+                }
+            }
+
+            if (state.step === STEPS.EMOTION_ALTERNATIVE) {
+                 if (msg.includes("oui") || msg.includes("yes") || msg.includes("hai") || msg.includes("はい")) {
+                     state.step = STEPS.EMOTION_DESCRIBE;
+                     return { text: t('askDescribe', state.useFormal), useLLM: false };
+                 } else {
+                     state.step = STEPS.END_OR_SUGGEST;
+                     return { text: t('endSuggest', state.useFormal), useLLM: false };
+                 }
+            }
+
+            if (state.step === STEPS.SITUATION_ASK) {
+                state.step = STEPS.NATURAL_CONVERSATION;
+                return { text: t('listen'), useLLM: true };
+            }
+
+            state.step = STEPS.NATURAL_CONVERSATION;
             return { text: null, useLLM: true };
         }
 
-        async function processTurn(userText = null) {
+        async function processTurn(userText = null, forceBotText = null) {
             userInput.disabled = true;
             sendBtn.disabled = true;
             welcomeScreen.classList.add('hidden');
             chatLog.classList.remove('hidden');
 
-            // 1. User Input
             if (userText) {
                 state.utteranceCount++;
                 appendMessage('user', userText);
                 state.history.push({ role: 'user', content: userText });
-
-                await logToSheet(state.discussionId, state.utteranceCount, userText);
+                logToSheet(state.discussionId, state.utteranceCount, userText).catch(console.error);
+                saveState();
             }
 
-            // 2. Bot Response
-            const logic = getHardcodedResponse(userText);
+            if (forceBotText) {
+                await new Promise(r => setTimeout(r, 600));
+
+                // Increment utterance count for system messages so order is preserved in sheets
+                state.utteranceCount++;
+
+                appendMessage('assistant', forceBotText);
+                state.history.push({ role: 'assistant', content: forceBotText });
+
+                // --- ADDED LOGGING HERE ---
+                logToSheet(state.discussionId, state.utteranceCount, forceBotText).catch(console.error);
+
+                saveState();
+                resetUI();
+                return;
+            }
+
+            const logic = getResponseLogic(userText);
 
             if (!logic.useLLM) {
-                // === HARDCODED PATH ===
                 await new Promise(r => setTimeout(r, 600));
 
                 state.utteranceCount++;
                 appendMessage('assistant', logic.text);
                 state.history.push({ role: 'assistant', content: logic.text });
 
-                await logToSheet(state.discussionId, state.utteranceCount, logic.text);
-
+                logToSheet(state.discussionId, state.utteranceCount, logic.text).catch(console.error);
+                saveState();
 
                 if (state.step === STEPS.END) {
-                    userInput.disabled = true;
-                    userInput.placeholder = "Discussion terminée.";
+                    endChat();
                 } else {
                     resetUI();
                 }
 
             } else {
-                // === LLM PATH ===
-                const botMessageDiv = appendMessage('assistant', '...');
+                const botMessageDiv = appendMessage('assistant', '<span class="animate-pulse">...</span>');
                 const botContentDiv = botMessageDiv.querySelector('.markdown-body');
 
                 try {
-                    let sysPrompt = "Make short answers in French. ALWAYS end with a question. The subject involves emotions and feelings. Encourage the user to make long messages, and do not forget to be empathetic. The user must be refered using the Fr .One in a while, you have to refer to ask questions to user about an emotion in the list of emotions: " + EMOTIONS.join(", ") + "." ;
-                    if (state.useNickname) sysPrompt += ` Call user '${state.nickname}'.`;
-                    sysPrompt += state.useFormal ? " Use 'vous'." : " Use 'tu'.";
+                    let sysPrompt = `You are a helpful, empathetic AI assistant exploring emotions. Language: ${state.lang}.`;
+                    sysPrompt += ` Keep answers concise (max 3 sentences) unless asked otherwise.`;
+                    sysPrompt += ` ALWAYS end with a question to the user.`;
+
+                    if(state.nickname) sysPrompt += ` The user's name is ${state.nickname}.`;
+                    if(state.lang === 'fr' && state.useFormal) sysPrompt += ` Use 'vous'.`;
+                    else if(state.lang === 'fr') sysPrompt += ` Use 'tu'.`;
+
                     const messagesToSend = [
                         { role: 'system', content: sysPrompt },
-                        ...state.history
+                        ...state.history.slice(-10)
                     ];
 
                     const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -291,48 +524,41 @@
 
                     state.utteranceCount++;
                     state.history.push({ role: 'assistant', content: botText });
-
                     state.llmTurnCount++;
 
-                    await logToSheet(state.discussionId, state.utteranceCount, botText);
+                    logToSheet(state.discussionId, state.utteranceCount, botText).catch(console.error);
+                    saveState();
 
                 } catch (error) {
                     console.error(error);
-                    botContentDiv.innerHTML = "<span class='text-red-500'>Error: Could not reach AI backend.</span>";
+                    botContentDiv.innerHTML = `<span class='text-red-400'>${t('errBackend')}</span>`;
                 } finally {
                     resetUI();
+                    scrollToBottom();
                 }
-            }
-
-            if (state.llmTurnCount >= 4) {
-                endChatHint.classList.remove('hidden');
             }
         }
 
         async function logToSheet(id, utteranceNum, text) {
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: 'log',
-                        discussion_id: id,
-                        utterance_number: utteranceNum,
-                        message: text
-                    })
-                });
-            } catch(e) {
-                console.log("Logging failed", e);
-            }
+             fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: 'log',
+                    discussion_id: id,
+                    utterance_number: utteranceNum,
+                    message: text,
+                    timestamp: new Date().toISOString()
+                })
+            });
         }
 
-        function appendMessage(role, text) {
+        function appendMessage(role, text, save = true) {
             const isUser = role === 'user';
             const bgColor = isUser ? '' : 'bg-[#444654]';
-
             const icon = isUser
-                ? '<div class="h-8 w-8 rounded bg-purple-600 flex items-center justify-center font-bold">U</div>'
+                ? '<div class="h-8 w-8 rounded bg-purple-600 flex items-center justify-center font-bold text-xs">YOU</div>'
                 : '<div class="h-8 w-8 rounded bg-green-500 flex items-center justify-center"><svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="0 0 24 24" class="h-5 w-5 text-white"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path></svg></div>';
 
             const html = `
@@ -346,8 +572,9 @@
                         </div>
                     </div>
                 </div>`;
+
             chatLog.insertAdjacentHTML('beforeend', html);
-            window.scrollTo(0, document.body.scrollHeight);
+            scrollToBottom();
             return chatLog.lastElementChild;
         }
 
@@ -356,40 +583,112 @@
             sendBtn.disabled = false;
             userInput.value = '';
             userInput.focus();
+            charCount.textContent = "0 chars";
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        // --- HELPER FUNCTIONS ---
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-container');
+            // Small timeout ensures DOM is rendered before scrolling
+            setTimeout(() => {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }, 100);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast-notification');
+            const msgSpan = document.getElementById('toast-message');
+
+            msgSpan.textContent = message;
+            toast.classList.remove('hidden');
+            // Small delay to allow class removal to register before adding opacity for transition
+            setTimeout(() => toast.classList.remove('opacity-0'), 10);
+
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 500); // Wait for fade out
+            }, 3000);
+        }
+
+        function validateInput(text) {
+            // Logic: If we are in the "LLM" phases (Situation Ask or Natural Conversation)
+            // We enforce the limit.
+            // STEPS.SITUATION_ASK (7) -> User is answering the request to describe context
+            // STEPS.NATURAL_CONVERSATION (8) -> Ongoing chat
+            if (state.step === STEPS.SITUATION_ASK || state.step === STEPS.NATURAL_CONVERSATION) {
+                // Ignore "fin" commands so user isn't trapped
+                if (text.match(/fin|stop|bye|quit|terminer|おわり|終了/i)) return true;
+
+                if (text.length < 50) {
+                    showToast(t('minCharWarning'));
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function endChat() {
+            userInput.disabled = true;
+            userInput.placeholder = "Discussion terminée / Chat ended.";
+            if(state.timerInterval) clearInterval(state.timerInterval);
         }
 
         function resetChat() {
-            state.discussionId = crypto.randomUUID();
-            state.step = STEPS.GREETING;
-            state.history = [];
-            state.utteranceCount = 0;
-            state.llmTurnCount = 0;
+            localStorage.removeItem('ai_motion_state');
+            resetState();
             chatLog.innerHTML = '';
-
-            endChatHint.classList.add('hidden');
-
-            processTurn(null);
+            welcomeScreen.classList.remove('hidden');
+            chatLog.classList.add('hidden');
+            document.getElementById('end-chat-hint').classList.add('hidden');
+            if(state.timerInterval) clearInterval(state.timerInterval);
+            timerDisplay.textContent = "00:00";
+            timerDisplay.classList.remove('timer-warning');
+            init();
         }
 
+        // --- EVENTS ---
+        // --- EVENTS ---
         sendBtn.addEventListener('click', () => {
             const text = userInput.value.trim();
-            if (text) processTurn(text);
+            if (text) {
+                if (validateInput(text)) {
+                    processTurn(text);
+                }
+            }
         });
 
         userInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                const text = userInput.value.trim();
-                if (text) processTurn(text);
+                // Important: Wanakana needs a moment to settle if converting
+                setTimeout(() => {
+                    const text = userInput.value.trim();
+                    if (text) {
+                        if (validateInput(text)) {
+                            processTurn(text);
+                        }
+                    }
+                }, 10);
             }
+        });
+
+        userInput.addEventListener('input', () => {
+            charCount.textContent = userInput.value.length + " chars";
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+        });
+
+        startBtn.addEventListener('click', () => {
+             processTurn(null);
         });
 
         document.getElementById('new-chat-desktop').addEventListener('click', resetChat);
         document.getElementById('new-chat-mobile').addEventListener('click', resetChat);
 
-        window.addEventListener('DOMContentLoaded', () => {
-            processTurn(null);
-        });
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

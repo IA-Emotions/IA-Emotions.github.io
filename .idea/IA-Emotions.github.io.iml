@@ -9,5 +9,8 @@
     </content>
     <orderEntry type="jdk" jdkName="Python 3.13 (IA-Emotions.github.io)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="marked" level="application" />
+    <orderEntry type="library" name="highlight.js" level="application" />
+    <orderEntry type="library" name="wanakana" level="application" />
   </component>
 </module>

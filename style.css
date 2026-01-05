@@ -158,3 +158,10 @@ nav ul li.lang-switch-desktop {
     padding: 0;
     display: inline-block;
 }
+
+/* Add this inside your <style> tag */
+#toast-notification {
+    transition: opacity 0.5s ease-in-out;
+    pointer-events: none; /* Allows clicking through it */
+    z-index: 50;
+}
