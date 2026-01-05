@@ -38,6 +38,9 @@
         <button id="new-chat-desktop" class="flex items-center gap-3 rounded-md border border-white/20 p-3 text-white transition-colors duration-200 hover:bg-gray-500/10 mb-2">
             <span class="text-xl">+</span> New chat
         </button>
+        <p id="end-chat-hint" class="text-xs text-gray-400 px-3 hidden">
+            Pour mettre fin à la discussion, dites "fin de la discussion"
+        </p>
     </div>
 
     <div class="flex flex-1 flex-col relative">
@@ -77,63 +80,11 @@
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyy1OKjOeWc34au_H7XX9F1A9sY_zV2-INJlU0SWlX801hWd0_oEklGecRCvDr5S9D6/exec";
 
         const EMOTIONS = [
-          "admiration",
-          "adoration",
-          "aesthetic appreciation",
-          "amusement",
-          "anger",
-          "anxiety",
-          "awe",
-          "awkwardness",
-          "boredom",
-          "calmness",
-          "confusion",
-          "craving",
-          "disgust",
-          "empathic pain",
-          "entrancement",
-          "excitement",
-          "fear",
-          "horror",
-          "interest",
-          "joy",
-          "nostalgia",
-          "relief",
-          "romance",
-          "sadness",
-          "satisfaction",
-          "neutral",
-          "surprise"
+          "admiration", "adoration", "aesthetic appreciation", "amusement", "anger", "anxiety", "awe", "awkwardness", "boredom", "calmness", "confusion", "craving", "disgust", "empathic pain", "entrancement", "excitement", "fear", "horror", "interest", "joy", "nostalgia", "relief", "romance", "sadness", "satisfaction", "neutral", "surprise"
         ];
 
         const EMOTION_TRANSLATIONS = {
-          "admiration": "admiration",
-          "adoration": "adoration",
-          "aesthetic appreciation": "appréciation esthétique",
-          "amusement": "amusement",
-          "anger": "colère",
-          "anxiety": "anxiété",
-          "awe": "émerveillement",
-          "awkwardness": "gêne",
-          "boredom": "ennui",
-          "calmness": "calme",
-          "confusion": "confusion",
-          "craving": "envie",
-          "disgust": "dégoût",
-          "empathic pain": "douleur empathique",
-          "entrancement": "fascination",
-          "excitement": "excitation",
-          "fear": "peur",
-          "horror": "horreur",
-          "interest": "intérêt",
-          "joy": "joie",
-          "nostalgia": "nostalgie",
-          "relief": "soulagement",
-          "romance": "romance",
-          "sadness": "tristesse",
-          "satisfaction": "satisfaction",
-          "neutral": "neutre",
-          "surprise": "surprise"
+          "admiration": "admiration", "adoration": "adoration", "aesthetic appreciation": "appréciation esthétique", "amusement": "amusement", "anger": "colère", "anxiety": "anxiété", "awe": "émerveillement", "awkwardness": "gêne", "boredom": "ennui", "calmness": "calme", "confusion": "confusion", "craving": "envie", "disgust": "dégoût", "empathic pain": "douleur empathique", "entrancement": "fascination", "excitement": "excitation", "fear": "peur", "horror": "horreur", "interest": "intérêt", "joy": "joie", "nostalgia": "nostalgie", "relief": "soulagement", "romance": "romance", "sadness": "tristesse", "satisfaction": "satisfaction", "neutral": "neutre", "surprise": "surprise"
         };
 
         const STEPS = {
@@ -148,6 +99,7 @@
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const welcomeScreen = document.getElementById('welcome-screen');
+        const endChatHint = document.getElementById('end-chat-hint'); // Reference to hint
 
         let state = {
             discussionId: crypto.randomUUID(),
@@ -157,13 +109,23 @@
             useFormal: false,
             useNickname: false,
             emotion: null,
-            history: []
+            history: [],
+            llmTurnCount: 0
         };
 
         function getHardcodedResponse(userMessage) {
             const s = state;
-            const msg = userMessage ? userMessage.toLowerCase() : "";
+            const msg = userMessage ? userMessage.toLowerCase().trim() : "";
             let response = null;
+
+            if (msg === "fin de la discussion") {
+                s.step = STEPS.END;
+            }
+
+            if (s.step === STEPS.END) {
+                response = "Merci d'avoir participé! \n\n La suite se passe ici: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Cliquez ici pour continuer</a>";
+                return { text: response, useLLM: false };
+            }
 
             if (s.step === STEPS.GREETING) {
                 response = "Bonjour ! Je suis heureux de pouvoir échanger avec vous aujourd'hui. Avant que nous commencions, souhaitez-vous choisir un pseudonyme que je pourrais utiliser pendant notre conversation ? Répondez par 'oui' ou 'non'.";
@@ -192,7 +154,7 @@
             if (s.step === STEPS.FORMALITY) {
                 s.useFormal = msg.includes("vouvoie") || msg.includes("vous");
                 const namePart = (s.useNickname && s.nickname) ? `, ${s.nickname}` : "";
-                response = `Très bien${namePart}. Comment ${s.useFormal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? Une émotion particulière ?`;
+                response = `Très bien${namePart}. Comment ${s.useFormal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? Une émotion particulière ? (répondre par 'oui' ou 'non')`;
                 s.step = STEPS.EMOTION_ASK;
                 return { text: response, useLLM: false };
             }
@@ -205,7 +167,7 @@
                     const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
                     s.emotion = emotion;
                     const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
-                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion de ${ef} ?` : `D'accord. Connais-tu par exemple l'émotion de ${ef} ?`;
+                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion \" ${ef} \"?` : `D'accord. Connais-tu par exemple l'émotion \" ${ef} \" ? (répondre par 'oui' ou 'non')`;
                     s.step = STEPS.EMOTION_SUGGEST;
                     return { text: response, useLLM: false };
                 }
@@ -244,18 +206,19 @@
             }
             if (s.step === STEPS.END_OR_SUGGEST) {
                 if (msg.includes("fin")) {
-                    response = "D'accord. Merci d'avoir échangé avec moi.";
                     s.step = STEPS.END;
+                    response = "Merci d'avoir participé! \n\nLa suite se passe ici: <a href='#' class='underline text-blue-400'>clickable link to be added later</a>";
                     return { text: response, useLLM: false };
                 } else {
                     const emotion = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
                     s.emotion = emotion;
                     const ef = EMOTION_TRANSLATIONS[emotion] || emotion;
-                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion de ${ef} ?` : `D'accord. Connais-tu par exemple l'émotion de ${ef} ?`;
+                    response = s.useFormal ? `D'accord. Connaissez-vous par exemple l'émotion \" ${ef} \" ?` : `D'accord. Connais-tu par exemple l'émotion \" ${ef} \" ?`;
                     s.step = STEPS.EMOTION_SUGGEST;
                     return { text: response, useLLM: false };
                 }
             }
+
             s.step = STEPS.NATURAL_CONVERSATION;
             return { text: null, useLLM: true };
         }
@@ -272,8 +235,6 @@
                 appendMessage('user', userText);
                 state.history.push({ role: 'user', content: userText });
 
-                // AWAIT: We wait for the logging to initiate before continuing logic
-                // This ensures User Log is sent before Bot Log
                 await logToSheet(state.discussionId, state.utteranceCount, userText);
             }
 
@@ -289,7 +250,14 @@
                 state.history.push({ role: 'assistant', content: logic.text });
 
                 await logToSheet(state.discussionId, state.utteranceCount, logic.text);
-                resetUI();
+
+
+                if (state.step === STEPS.END) {
+                    userInput.disabled = true;
+                    userInput.placeholder = "Discussion terminée.";
+                } else {
+                    resetUI();
+                }
 
             } else {
                 // === LLM PATH ===
@@ -297,10 +265,9 @@
                 const botContentDiv = botMessageDiv.querySelector('.markdown-body');
 
                 try {
-                    let sysPrompt = "Make short answers in French. ALWAYS end with a question. The subject involves emotions and feelings. Encourage the user to make long messages, and do not forget to be empathetic.";
+                    let sysPrompt = "Make short answers in French. ALWAYS end with a question. The subject involves emotions and feelings. Encourage the user to make long messages, and do not forget to be empathetic. The user must be refered using the Fr .One in a while, you have to refer to ask questions to user about an emotion in the list of emotions: " + EMOTIONS.join(", ") + "." ;
                     if (state.useNickname) sysPrompt += ` Call user '${state.nickname}'.`;
                     sysPrompt += state.useFormal ? " Use 'vous'." : " Use 'tu'.";
-
                     const messagesToSend = [
                         { role: 'system', content: sysPrompt },
                         ...state.history
@@ -325,6 +292,8 @@
                     state.utteranceCount++;
                     state.history.push({ role: 'assistant', content: botText });
 
+                    state.llmTurnCount++;
+
                     await logToSheet(state.discussionId, state.utteranceCount, botText);
 
                 } catch (error) {
@@ -334,13 +303,14 @@
                     resetUI();
                 }
             }
+
+            if (state.llmTurnCount >= 4) {
+                endChatHint.classList.remove('hidden');
+            }
         }
 
-        // Updated Helper: Now returns a Promise so we can "await" it
         async function logToSheet(id, utteranceNum, text) {
             try {
-                // We await the fetch. Even with no-cors, await ensures the request
-                // is dispatched by the browser before the code continues.
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -393,7 +363,11 @@
             state.step = STEPS.GREETING;
             state.history = [];
             state.utteranceCount = 0;
+            state.llmTurnCount = 0;
             chatLog.innerHTML = '';
+
+            endChatHint.classList.add('hidden');
+
             processTurn(null);
         }
 
