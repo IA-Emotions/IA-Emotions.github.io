@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const isFrenchPage = /Fr\.html$/i.test(currentPage);
 
     // Define the correct link based on language
-    const chatUrl = isFrenchPage ? 'Chat%20Fr.html' : 'Chat.html';
+    const chatUrl = 'Chat%20Fr.html';
 
     // Function to create the list item <li><a href="...">Chatbot</a></li>
     function createChatLink() {
