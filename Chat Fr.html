@@ -136,7 +136,11 @@
                 listen: "Je vous écoute.",
                 timeUpWarning: "Le temps passe vite ! Il nous reste quelques minutes.",
                 timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
-                finalMessage: "Merci d'avoir participé ! <br><br> La suite se passe ici : <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>",
+                finalMessage: (name) => {
+                    const safeName = encodeURIComponent(name || "");
+                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${safeName}`;
+                    return `Merci d'avoir participé ! <br><br> La suite se passe ici : <a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
+                },
                 errBackend: "Erreur de connexion au cerveau IA.",
                 minCharWarning: "Veuillez écrire un peu plus (au moins 50 caractères).",
             },
@@ -157,7 +161,11 @@
                 listen: "I'm listening.",
                 timeUpWarning: "Time flies! We have a few minutes left.",
                 timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
-                finalMessage: "Thank you for participating! <br><br> Next step: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>Click here for the survey</a>",
+                finalMessage: (name) => {
+                    const safeName = encodeURIComponent(name || "");
+                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${safeName}`;
+                    return `Thank you for participating! <br><br> Next step: <a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
+                },
                 errBackend: "Error connecting to AI backend.",
                 minCharWarning: "Please write a bit more (at least 50 characters).",
             },
@@ -178,7 +186,11 @@
                 listen: "聞いています。",
                 timeUpWarning: "時間が経つのは早いですね！残り数分です。",
                 timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
-                finalMessage: "ご参加ありがとうございました！ <br><br> 次のステップ: <a href='https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9' target='_blank' class='underline text-blue-400'>アンケートはこちら</a>",
+                finalMessage: (name) => {
+                    const safeName = encodeURIComponent(name || "");
+                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${safeName}`;
+                    return `ご参加ありがとうございました！ <br><br> 次のステップ: <a href='${url}' target='_blank' class='underline text-blue-400'>アンケートはこちら</a>`;
+                },
                 errBackend: "AIバックエンドへの接続エラー。",
                 minCharWarning: "もう少し長く書いてください（50文字以上）。",
             }
@@ -359,12 +371,12 @@
 
             if (msg.match(endPattern) && state.step !== STEPS.END) {
                  state.step = STEPS.END;
-                 return { text: t('finalMessage'), useLLM: false };
+                 return { text: t('finalMessage', state.nickname), useLLM: false };
             }
 
             if (state.step === STEPS.LAST_TURN) {
                  state.step = STEPS.END;
-                 return { text: t('finalMessage'), useLLM: false };
+                 return { text: t('finalMessage', state.nickname), useLLM: false };
             }
 
             if (state.step === STEPS.GREETING) {
@@ -462,7 +474,6 @@
                 appendMessage('assistant', forceBotText);
                 state.history.push({ role: 'assistant', content: forceBotText });
 
-                // --- ADDED LOGGING HERE ---
                 logToSheet(state.discussionId, state.utteranceCount, forceBotText).catch(console.error);
 
                 saveState();
@@ -649,7 +660,6 @@
             init();
         }
 
-        // --- EVENTS ---
         // --- EVENTS ---
         sendBtn.addEventListener('click', () => {
             const text = userInput.value.trim();
