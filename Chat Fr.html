@@ -58,15 +58,19 @@
 
         <div class="mt-auto px-3 pb-4">
             <div id="timer-display" class="text-xs text-gray-400 font-mono mb-2">00:00</div>
-            <p id="end-chat-hint" class="text-xs text-gray-500 hidden lang-end-hint">
-                Pour finir, dites "au revoir".
-            </p>
+
+            <button id="end-btn-desktop" class="hidden w-full items-center justify-center gap-2 rounded border border-red-500/50 bg-red-500/10 p-2 text-xs text-red-200 transition-colors hover:bg-red-500/20">
+                Stop / Fin
+            </button>
         </div>
     </div>
 
     <div class="flex flex-1 flex-col relative">
         <div class="flex items-center justify-between border-b border-white/20 bg-gray-800 p-2 text-gray-100 md:hidden">
             <div class="text-xs font-mono" id="mobile-timer">00:00</div>
+            <button id="end-btn-mobile" class="hidden px-2 py-1 text-xs text-red-300 border border-red-900 rounded bg-red-900/20 mr-2">
+                Fin
+            </button>
             <span>Ai-motion</span>
             <button id="new-chat-mobile" class="p-2 hover:bg-gray-900 rounded">+</button>
         </div>
@@ -136,9 +140,8 @@
                 listen: "Je vous écoute.",
                 timeUpWarning: "Le temps passe vite ! Il nous reste quelques minutes.",
                 timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
-                finalMessage: (name) => {
-                    const safeName = encodeURIComponent(name || "");
-                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${safeName}`;
+                finalMessage: () => {
+                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
                     return `Merci d'avoir participé ! <br><br> La suite se passe ici : <a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
                 },
                 errBackend: "Erreur de connexion au cerveau IA.",
@@ -161,9 +164,8 @@
                 listen: "I'm listening.",
                 timeUpWarning: "Time flies! We have a few minutes left.",
                 timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
-                finalMessage: (name) => {
-                    const safeName = encodeURIComponent(name || "");
-                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${safeName}`;
+                finalMessage: () => {
+                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}}`;
                     return `Thank you for participating! <br><br> Next step: <a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
                 },
                 errBackend: "Error connecting to AI backend.",
@@ -186,9 +188,8 @@
                 listen: "聞いています。",
                 timeUpWarning: "時間が経つのは早いですね！残り数分です。",
                 timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
-                finalMessage: (name) => {
-                    const safeName = encodeURIComponent(name || "");
-                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${safeName}`;
+                finalMessage: () => {
+                    const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
                     return `ご参加ありがとうございました！ <br><br> 次のステップ: <a href='${url}' target='_blank' class='underline text-blue-400'>アンケートはこちら</a>`;
                 },
                 errBackend: "AIバックエンドへの接続エラー。",
@@ -248,6 +249,7 @@
                         restoreChatLog();
                         if(state.startTime) startTimer(false);
                         updateLanguageUI();
+                        updateEndButtonVisibility();
 
                         if(state.history.length > 0) {
                             welcomeScreen.classList.add('hidden');
@@ -367,16 +369,9 @@
         function getResponseLogic(userMessage) {
             const msg = userMessage ? userMessage.toLowerCase().trim() : "";
 
-            const endPattern = /\b(fin|goodbye|bye|quit|terminé|terminer|fini)\b|おわり|終了/i;
-
-            if (msg.match(endPattern) && state.step !== STEPS.END) {
-                 state.step = STEPS.END;
-                 return { text: t('finalMessage', state.nickname), useLLM: false };
-            }
-
             if (state.step === STEPS.LAST_TURN) {
                  state.step = STEPS.END;
-                 return { text: t('finalMessage', state.nickname), useLLM: false };
+                 return { text: t('finalMessage'), useLLM: false };
             }
 
             if (state.step === STEPS.GREETING) {
@@ -478,6 +473,7 @@
 
                 saveState();
                 resetUI();
+                updateEndButtonVisibility();
                 return;
             }
 
@@ -498,6 +494,7 @@
                 } else {
                     resetUI();
                 }
+                updateEndButtonVisibility();
 
             } else {
                 const botMessageDiv = appendMessage('assistant', '<span class="animate-pulse">...</span>');
@@ -539,6 +536,7 @@
 
                     logToSheet(state.discussionId, state.utteranceCount, botText).catch(console.error);
                     saveState();
+                    updateEndButtonVisibility();
 
                 } catch (error) {
                     console.error(error);
@@ -608,6 +606,29 @@
             }, 100);
         }
 
+        function updateEndButtonVisibility() {
+            const desktopBtn = document.getElementById('end-btn-desktop');
+            const mobileBtn = document.getElementById('end-btn-mobile');
+
+
+            if (state.llmTurnCount >= 2 && state.step !== STEPS.END) {
+                desktopBtn.classList.remove('hidden');
+                desktopBtn.classList.add('flex');
+                mobileBtn.classList.remove('hidden');
+            } else {
+                desktopBtn.classList.add('hidden');
+                desktopBtn.classList.remove('flex');
+                mobileBtn.classList.add('hidden');
+            }
+        }
+
+        function triggerEndChat() {
+            if (state.step === STEPS.END) return;
+            state.step = STEPS.END;
+            processTurn(null, t('finalMessage'));
+            updateEndButtonVisibility();
+        }
+
         function showToast(message) {
             const toast = document.getElementById('toast-notification');
             const msgSpan = document.getElementById('toast-message');
@@ -650,6 +671,7 @@
         function resetChat() {
             localStorage.removeItem('ai_motion_state');
             resetState();
+            updateEndButtonVisibility();
             chatLog.innerHTML = '';
             welcomeScreen.classList.remove('hidden');
             chatLog.classList.add('hidden');
@@ -697,7 +719,8 @@
 
         document.getElementById('new-chat-desktop').addEventListener('click', resetChat);
         document.getElementById('new-chat-mobile').addEventListener('click', resetChat);
-
+        document.getElementById('end-btn-desktop').addEventListener('click', triggerEndChat);
+        document.getElementById('end-btn-mobile').addEventListener('click', triggerEndChat);
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
