@@ -112,7 +112,7 @@
     </div>
 
     <div id="toast-notification" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-6 py-4 rounded-lg shadow-xl opacity-0 hidden text-center max-w-[80%]">
-        <span id="toast-message">Minimum 50 chars</span>
+        <span id="toast-message">Minimum 25 chars</span>
     </div>
 
     <script>
@@ -124,17 +124,17 @@
         // --- I18N & TEXT CONTENT ---
         const I18N = {
             fr: {
-                newChat: " Nouvelle discussion",
+                newChat: "Nouvelle discussion",
                 welcomeSub: "Une expérience conversationnelle sur les émotions.",
                 startBtn: "Commencer la discussion",
                 placeholder: "Écrivez votre message...",
                 endHint: "Dites 'au revoir' pour terminer.",
                 greeting: "Bonjour ! Je suis heureux d'échanger avec vous. Comment souhaitez-vous que je vous appelle ? (Vous pouvez choisir un pseudonyme).",
                 formality: (name) => `Enchanté·e ${name}. Préférez-vous que je vous dise « tu » ou « vous » ?`,
-                askEmotion: (formal) => `C'est noté. Comment ${formal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? (Joie, fatigue, stress...)`,
+                askEmotion: (formal) => `C'est noté. Comment ${formal ? "vous sentez-vous" : "te sens-tu"} en ce moment ? (Ex: Joie, fatigue, stress...)`,
                 askDescribe: (formal) => `${formal ? "Dites" : "Dis"}-m'en un peu plus. Qu'est-ce qui provoque ce sentiment ?`,
-                suggestEmotion: (formal, em, trans) => `Je vois. Cela me fait penser à l'émotion "${trans}". ${formal ? "Connaissez-vous" : "Connais-tu"} cette émotion ?`,
-                continue: (formal) => `Intéressant. ${formal ? "Voudriez-vous" : "Voudrais-tu"} me raconter une situation spécifique où ${formal ? "vous avez" : "tu as"} ressenti cela ? N'hésitez pas à détailler.`,
+                suggestEmotion: (formal, em, trans) => `Je vois, merci pour ce partage. J'aimerais maintenant aborder une émotion différente : "${trans}". ${formal ? "La connaissez-vous" : "La connais-tu"} ?`,
+                continue: (formal) => `D'accord. ${formal ? "Voudriez-vous" : "Voudrais-tu"} me raconter une situation spécifique où ${formal ? "vous avez" : "tu as"} ressenti cela ? ${formal ? "N'hésitez" : "N'hésite"} pas à détailler.`,
                 alternative: (formal) => `Pas de souci. ${formal ? "Souhaitez-vous" : "Souhaites-tu"} parler d'une autre émotion ?`,
                 endSuggest: (formal) => `${formal ? "Souhaitez-vous" : "Souhaites-tu"} que je propose autre chose ou préfèrez-vous arrêter ?`,
                 listen: "Je vous écoute.",
@@ -144,8 +144,8 @@
                     const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
                     return `Merci d'avoir participé ! <br><br> La suite se passe ici : <a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
                 },
-                errBackend: "Erreur de connexion au cerveau IA.",
-                minCharWarning: "Veuillez écrire un peu plus (au moins 50 caractères).",
+                errBackend: "Erreur de connexion au backend IA.",
+                minCharWarning: "Veuillez écrire un peu plus (au moins 25 caractères).",
             },
             en: {
                 newChat: "New Chat",
@@ -155,10 +155,10 @@
                 endHint: "Say 'goodbye' to finish.",
                 greeting: "Hello! I'm happy to chat with you. How would you like me to call you? (You can pick a nickname).",
                 formality: (name) => `Nice to meet you, ${name}. How are you feeling right now?`,
-                askEmotion: (formal) => `How are you feeling right now? (Joy, tired, stressed...)`,
+                askEmotion: (formal) => `Noted. How are you feeling right now? (Joy, tired, stressed...)`,
                 askDescribe: (formal) => `Tell me more. What is causing this feeling?`,
-                suggestEmotion: (formal, em, trans) => `I see. That reminds me of the emotion "${em}". Are you familiar with it?`,
-                continue: (formal) => `Interesting. Would you like to tell me about a specific situation where you felt this? Feel free to go into detail.`,
+                suggestEmotion: (formal, em, trans) => `Thank you for sharing that. I would like to explore a different emotion with you now: "${em}". Are you familiar with it?`,
+                continue: (formal) => `Okay. Would you like to tell me about a specific situation where you felt this? Feel free to go into detail.`,
                 alternative: (formal) => `No problem. Would you like to talk about another emotion?`,
                 endSuggest: (formal) => `Would you like me to suggest something else, or shall we stop here?`,
                 listen: "I'm listening.",
@@ -169,7 +169,7 @@
                     return `Thank you for participating! <br><br> Next step: <a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
                 },
                 errBackend: "Error connecting to AI backend.",
-                minCharWarning: "Please write a bit more (at least 50 characters).",
+                minCharWarning: "Please write a bit more (at least 25 characters).",
             },
             ja: {
                 newChat: "新しいチャット",
@@ -178,11 +178,11 @@
                 placeholder: "メッセージを入力...",
                 endHint: "終了するには「終了」と言ってください。",
                 greeting: "こんにちは！お話しできて嬉しいです。なんとお呼びすればいいですか？（ニックネームでも構いません）。",
-                formality: (name) => `${name}さん、はじめまして。今の気分はいかがですか？（喜び、疲れ、ストレスなど）`,
-                askEmotion: (formal) => `今の気分はいかがですか？`,
+                formality: (name) => `${name}さん、はじめまして。今の気分はいかがですか？`,
+                askEmotion: (formal) => `了解しました。今の気分はいかがですか？（喜び、疲れ、ストレスなど）`,
                 askDescribe: (formal) => `もう少し詳しく教えてください。その気持ちの原因は何ですか？`,
-                suggestEmotion: (formal, em, trans) => `なるほど。それは「${em}」という感情に似ていますね。ご存知ですか？`,
-                continue: (formal) => `興味深いです。実際にその感情を抱いた具体的な場面について教えていただけますか？詳しく書いていただいて構いません。`,
+                suggestEmotion: (formal, em, trans) => `共有していただきありがとうございます。では、少し違う感情について話してみましょう。「${em}」という感情はご存知ですか？`,
+                continue: (formal) => `わかりました。実際にその感情を抱いた具体的な場面について教えていただけますか？詳しく書いていただいて構いません。`,
                 alternative: (formal) => `わかりました。別の感情について話しますか？`,
                 endSuggest: (formal) => `他の提案をしましょうか？それともここで終わりますか？`,
                 listen: "聞いています。",
@@ -193,7 +193,7 @@
                     return `ご参加ありがとうございました！ <br><br> 次のステップ: <a href='${url}' target='_blank' class='underline text-blue-400'>アンケートはこちら</a>`;
                 },
                 errBackend: "AIバックエンドへの接続エラー。",
-                minCharWarning: "もう少し長く書いてください（50文字以上）。",
+                minCharWarning: "もう少し長く書いてください（25文字以上）。",
             }
         };
 
@@ -234,7 +234,9 @@
             llmTurnCount: 0,
             startTime: null,
             lang: 'fr',
-            timerInterval: null
+            timerInterval: null,
+            warningSent: false,
+            pendingTimeUp: false
         };
 
         // --- INIT & LOCAL STORAGE ---
@@ -325,7 +327,8 @@
         function startTimer(reset = true) {
             if (reset) {
                 state.startTime = Date.now();
-                state.warningSent = false; // Reset flag on new timer
+                state.warningSent = false;
+                state.pendingTimeUp = false;
             }
             if (state.timerInterval) clearInterval(state.timerInterval);
 
@@ -342,32 +345,56 @@
                 timerDisplay.textContent = text;
                 mobileTimer.textContent = text;
 
-                // Trigger warning text message at 7 minutes
                 if (elapsed > WARNING_TIME_MS) {
                     timerDisplay.classList.add('timer-warning');
 
                     if (!state.warningSent) {
                         state.warningSent = true;
-                        processTurn(null, t('timeUpWarning'));
+                        injectSystemMessage(t('timeUpWarning'));
                     }
                 }
 
                 if (remaining <= 0 && state.step !== STEPS.LAST_TURN && state.step !== STEPS.END) {
-                    forceTimeUp();
+                    if (userInput.value.trim().length > 0) {
+                        state.pendingTimeUp = true;
+                    } else {
+                        triggerTimeUpSequence();
+                    }
                 }
             }, 1000);
         }
 
-        function forceTimeUp() {
-             clearInterval(state.timerInterval);
+        function triggerTimeUpSequence() {
+             if(state.timerInterval) clearInterval(state.timerInterval);
              state.step = STEPS.LAST_TURN;
              const msg = t('timeUpFinal');
+             // On force ce message système
              processTurn(null, msg);
+             state.pendingTimeUp = false;
+        }
+
+        function injectSystemMessage(text) {
+            state.utteranceCount++;
+            appendMessage('assistant', text);
+            state.history.push({ role: 'assistant', content: text });
+            logToSheet(state.discussionId, state.utteranceCount, text).catch(console.error);
+            saveState();
         }
 
         // --- CORE LOGIC ---
         function getResponseLogic(userMessage) {
             const msg = userMessage ? userMessage.toLowerCase().trim() : "";
+
+            const isAffirmative = (text) => {
+                const triggers = [
+                    "oui", "yes", "hai", "はい",
+                    "ouais", "si", "effectivement", "absolument", "bien sûr", "bien sur",
+                    "ça me dit", "ca me dit", "je connais", "déjà ressenti", "déjà vécu",
+                    "yeah", "yep", "sure", "of course", "familiar", "i know", "indeed", "absolutely", "I know", "already felt", "already experienced",
+                    "うん","ああ","もちろん","知っている","知ってるよ","確かに","絶対に","知ってる","すでに感じた","すでに経験した"
+                ];
+                return triggers.some(t => text.includes(t));
+            };
 
             if (state.step === STEPS.LAST_TURN) {
                  state.step = STEPS.END;
@@ -381,7 +408,7 @@
             }
 
             if (state.step === STEPS.CAPTURE_NICKNAME) {
-                state.nickname = userMessage.trim();
+                state.nickname = extractName(userMessage, state.lang);
 
                 if (state.lang === 'en') {
                      state.useFormal = false;
@@ -418,7 +445,7 @@
             }
 
             if (state.step === STEPS.EMOTION_SUGGEST) {
-                if (msg.includes("oui") || msg.includes("yes") || msg.includes("hai") || msg.includes("はい") || msg.length > 10) {
+                if (isAffirmative(msg)) {
                      state.step = STEPS.SITUATION_ASK;
                      return { text: t('continue', state.useFormal), useLLM: false };
                 } else {
@@ -428,7 +455,7 @@
             }
 
             if (state.step === STEPS.EMOTION_ALTERNATIVE) {
-                 if (msg.includes("oui") || msg.includes("yes") || msg.includes("hai") || msg.includes("はい")) {
+                 if (isAffirmative(msg)) {
                      state.step = STEPS.EMOTION_DESCRIBE;
                      return { text: t('askDescribe', state.useFormal), useLLM: false };
                  } else {
@@ -455,7 +482,7 @@
             if (userText) {
                 state.utteranceCount++;
                 appendMessage('user', userText);
-                state.history.push({ role: 'user', content: userText });
+                state.history.push({role: 'user', content: userText});
                 logToSheet(state.discussionId, state.utteranceCount, userText).catch(console.error);
                 saveState();
             }
@@ -463,11 +490,10 @@
             if (forceBotText) {
                 await new Promise(r => setTimeout(r, 600));
 
-                // Increment utterance count for system messages so order is preserved in sheets
                 state.utteranceCount++;
 
                 appendMessage('assistant', forceBotText);
-                state.history.push({ role: 'assistant', content: forceBotText });
+                state.history.push({role: 'assistant', content: forceBotText});
 
                 logToSheet(state.discussionId, state.utteranceCount, forceBotText).catch(console.error);
 
@@ -484,7 +510,7 @@
 
                 state.utteranceCount++;
                 appendMessage('assistant', logic.text);
-                state.history.push({ role: 'assistant', content: logic.text });
+                state.history.push({role: 'assistant', content: logic.text});
 
                 logToSheet(state.discussionId, state.utteranceCount, logic.text).catch(console.error);
                 saveState();
@@ -496,6 +522,10 @@
                 }
                 updateEndButtonVisibility();
 
+                if (state.pendingTimeUp && state.step !== STEPS.END) {
+                    setTimeout(triggerTimeUpSequence, 1000);
+                }
+
             } else {
                 const botMessageDiv = appendMessage('assistant', '<span class="animate-pulse">...</span>');
                 const botContentDiv = botMessageDiv.querySelector('.markdown-body');
@@ -505,19 +535,19 @@
                     sysPrompt += ` Keep answers concise (max 3 sentences) unless asked otherwise.`;
                     sysPrompt += ` ALWAYS end with a question to the user.`;
 
-                    if(state.nickname) sysPrompt += ` The user's name is ${state.nickname}.`;
-                    if(state.lang === 'fr' && state.useFormal) sysPrompt += ` Use 'vous'.`;
-                    else if(state.lang === 'fr') sysPrompt += ` Use 'tu'.`;
+                    if (state.nickname) sysPrompt += ` The user's name is ${state.nickname}.`;
+                    if (state.lang === 'fr' && state.useFormal) sysPrompt += ` Use 'vous'.`;
+                    else if (state.lang === 'fr') sysPrompt += ` Use 'tu'.`;
 
                     const messagesToSend = [
-                        { role: 'system', content: sysPrompt },
+                        {role: 'system', content: sysPrompt},
                         ...state.history.slice(-10)
                     ];
 
                     const response = await fetch(GOOGLE_SCRIPT_URL, {
                         method: 'POST',
                         redirect: "follow",
-                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        headers: {"Content-Type": "text/plain;charset=utf-8"},
                         body: JSON.stringify({
                             action: 'chat',
                             messages: messagesToSend
@@ -531,7 +561,7 @@
                     hljs.highlightAll();
 
                     state.utteranceCount++;
-                    state.history.push({ role: 'assistant', content: botText });
+                    state.history.push({role: 'assistant', content: botText});
                     state.llmTurnCount++;
 
                     logToSheet(state.discussionId, state.utteranceCount, botText).catch(console.error);
@@ -544,6 +574,10 @@
                 } finally {
                     resetUI();
                     scrollToBottom();
+
+                    if (state.pendingTimeUp && state.step !== STEPS.END) {
+                        setTimeout(triggerTimeUpSequence, 1500);
+                    }
                 }
             }
         }
@@ -606,6 +640,40 @@
             }, 100);
         }
 
+        function extractName(input, lang) {
+            let text = input.trim();
+
+            // 1. Clean starting/ending punctuation
+            text = text.replace(/^[,.!?;:。]+|[,.!?;:。]+$/g, '');
+
+            if (lang === 'fr') {
+                // Expanded patterns to catch more natural phrasing
+                const prefix = /^(?:bonjour|salut|coucou)?\s*,?\s*(?:je m['’]appelle|mon nom est|appelez[- ]moi|appelle[- ]moi|moi,? c['’]est|c['’]est|je suis|tu peux m['’]appeler)\s+/i;
+                const separators = /\s+(?:parce que|car|puisque|mais|c['’]est-à-dire).*$/i;
+                const smallEndings = /(?:[, ]+d['’]accord\??$)|(?:[, ]+hein\??$)/i;
+
+                text = text.replace(prefix, '').replace(separators, '').replace(smallEndings, '');
+            }
+            else if (lang === 'en') {
+                const prefix = /^(?:hello|hi|hey)?\s*,?\s*(?:my\s+name\s+is|i\s+am|i['’]m|call\s+me|please\s*,?\s*call\s+me|you\s+can\s+call\s+me|refer\s+to\s+me\s+as|it['’]s)\s+/i;
+                const separators = /\s+(?:because|since|as|but).*$/i;
+
+                text = text.replace(prefix, '').replace(separators, '');
+            }
+            else if (lang === 'ja') {
+                const suffix = /(?:です|だよ|と(?:申|い)います|と(?:呼|よ)んで(?:ください)?|(?:\s|　)呼んで(?:ください)?)$/;
+                const prefix = /^(?:私の名前は|名前は|私は)/;
+                text = text.replace(suffix, '').replace(prefix, '');
+            }
+
+            // Capitalize first letter, lowercase rest (optional style choice, good for names)
+            text = text.trim();
+            if (text.length > 0) {
+                return text.charAt(0).toUpperCase() + text.slice(1);
+            }
+            return text;
+        }
+
         function updateEndButtonVisibility() {
             const desktopBtn = document.getElementById('end-btn-desktop');
             const mobileBtn = document.getElementById('end-btn-mobile');
@@ -654,7 +722,7 @@
                 // Ignore "fin" commands so user isn't trapped
                 if (text.match(/fin|stop|bye|quit|terminer|おわり|終了/i)) return true;
 
-                if (text.length < 50) {
+                if (text.length < 25) {
                     showToast(t('minCharWarning'));
                     return false;
                 }
