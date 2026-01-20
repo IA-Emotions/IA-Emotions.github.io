@@ -116,12 +116,21 @@
     </div>
 
     <script>
-        // CONFIGURATION
+        // ==================================================================================
+        // PART 1: INITIALISATION & CONFIGURATION
+        // ==================================================================================
+        // URL du backend (Google Apps Script) qui gère l'appel au LLM et l'enregistrement dans Google Sheets.
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDu9NwoXRvtpKWeeHTpLEHVHxJExAB_N-bdPpZAWbRzxUxH_yCw9lbRipq157pjxOr/exec";
+
+        // Durée totale de la session en millisecondes (10 minutes).
         const SESSION_DURATION_MS = 10 * 60 * 1000;
+
+        // Moment où l'avertissement de temps apparaît (7 minutes).
         const WARNING_TIME_MS = 7 * 60 * 1000;
 
         // --- I18N & TEXT CONTENT ---
+        // Dictionnaire contenant toutes les traductions (Français, Anglais, Japonais).
+        // Contient des chaînes simples et des fonctions qui retournent des chaînes dynamiques (ex: incluant le nom).
         const I18N = {
             fr: {
                 newChat: "Nouvelle discussion",
@@ -197,14 +206,20 @@
             }
         };
 
+        // Liste des émotions possibles
         const EMOTIONS_LIST = [
             "admiration", "adoration", "aesthetic appreciation", "amusement", "anger", "anxiety", "awe", "awkwardness", "boredom", "calmness", "confusion", "craving", "disgust", "empathic pain", "entrancement", "excitement", "fear", "horror", "interest", "joy", "nostalgia", "relief", "romance", "sadness", "satisfaction", "neutral", "surprise"
         ];
 
+        // Mapping pour traduire les émotions vers le français
         const FR_EMOTION_MAP = {
             "admiration": "admiration", "adoration": "adoration", "aesthetic appreciation": "appréciation esthétique", "amusement": "amusement", "anger": "colère", "anxiety": "anxiété", "awe": "émerveillement", "awkwardness": "gêne", "boredom": "ennui", "calmness": "calme", "confusion": "confusion", "craving": "envie", "disgust": "dégoût", "empathic pain": "douleur empathique", "entrancement": "fascination", "excitement": "excitation", "fear": "peur", "horror": "horreur", "interest": "intérêt", "joy": "joie", "nostalgia": "nostalgie", "relief": "soulagement", "romance": "romance", "sadness": "tristesse", "satisfaction": "satisfaction", "neutral": "neutre", "surprise": "surprise"
         };
 
+        // Un mapping vers le japonais n'as pas été inclus pour des raisons de simplicité
+
+        // Enumération des étapes de la machine à états (State Machine).
+        // Cela permet de savoir où on en est dans le scénario (Bonjour -> Nom -> Émotion -> Description -> etc).
         const STEPS = {
             GREETING: 1, CAPTURE_NICKNAME: 2, FORMALITY: 3, EMOTION_ASK: 4, EMOTION_DESCRIBE: 5,
             EMOTION_SUGGEST: 6, SITUATION_ASK: 7, NATURAL_CONVERSATION: 8,
@@ -212,6 +227,7 @@
         };
 
         // --- DOM ELEMENTS ---
+        // Récupération des éléments HTML pour interagir avec l'interface.
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
@@ -223,33 +239,36 @@
         const charCount = document.getElementById('char-count');
 
         // --- STATE MANAGEMENT ---
+        // Objet central qui stocke tout l'état de l'application.
         let state = {
-            discussionId: null,
-            utteranceCount: 0,
-            step: STEPS.GREETING,
-            nickname: null,
-            useFormal: true,
-            emotion: null,
-            history: [],
-            llmTurnCount: 0,
-            startTime: null,
-            lang: 'fr',
-            timerInterval: null,
-            warningSent: false,
-            pendingTimeUp: false
+            discussionId: null,      // ID unique pour lier la conversation aux logs
+            utteranceCount: 0,       // Compteur de messages échangés
+            step: STEPS.GREETING,    // Étape actuelle du scénario
+            nickname: null,          // Pseudo de l'utilisateur
+            useFormal: true,         // Tutoiement (false) ou Vouvoiement (true)
+            emotion: null,           // L'émotion sélectionnée au hasard
+            history: [],             // Historique des messages pour le contexte LLM
+            llmTurnCount: 0,         // Nombre de fois où le LLM a répondu
+            startTime: null,         // Heure de début pour le timer
+            lang: 'fr',              // Langue active
+            timerInterval: null,     // Pour le setInterval du timer
+            warningSent: false,      // Si l'avertissement de temps a déjà été envoyé
+            pendingTimeUp: false     // Si le temps est écoulé pendant que l'utilisateur écrit
         };
 
         // --- INIT & LOCAL STORAGE ---
+       // Fonction lancée au chargement de la page.
+        // Elle tente de récupérer une session existante dans le localStorage du navigateur.
         function init() {
-            // Restore from localStorage if exists
             const saved = localStorage.getItem('ai_motion_state');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
+                    // Si la session n'était pas terminée, on restaure l'état
                     if (parsed.step !== STEPS.END) {
                         state = parsed;
-                        restoreChatLog();
-                        if(state.startTime) startTimer(false);
+                        restoreChatLog(); // Réaffiche les anciens messages
+                        if(state.startTime) startTimer(false); // Relance le timer sans le remettre à zéro
                         updateLanguageUI();
                         updateEndButtonVisibility();
 
@@ -258,6 +277,7 @@
                             chatLog.classList.remove('hidden');
                         }
                     } else {
+                        // Si l'ancienne session était finie, on remet à zéro
                         resetState();
                     }
                 } catch(e) { console.error("Load error", e); resetState(); }
@@ -266,9 +286,10 @@
             }
         }
 
+        // Remet l'état à ses valeurs par défaut (nouvelle discussion).
         function resetState() {
             state = {
-                discussionId: crypto.randomUUID(),
+                discussionId: crypto.randomUUID(), // Génère un nouvel ID unique
                 utteranceCount: 0,
                 step: STEPS.GREETING,
                 nickname: null,
@@ -284,14 +305,18 @@
             document.getElementById('discussion-id-display').textContent = "ID: " + state.discussionId;
         }
 
+        // Sauvegarde l'état actuel dans le navigateur (pour ne pas perdre la conversation si on rafraîchit).
+        // On exclut 'timerInterval' car on ne peut pas sauvegarder un intervalle JavaScript.
         function saveState() {
             const { timerInterval, ...toSave } = state;
             localStorage.setItem('ai_motion_state', JSON.stringify(toSave));
         }
 
+        // Reconstruit visuellement l'historique du chat à partir de la variable state.history.
         function restoreChatLog() {
             chatLog.innerHTML = '';
             state.history.forEach(msg => {
+                // On n'affiche pas les messages "système" (les instructions cachées au LLM)
                 if(msg.role !== 'system') {
                     appendMessage(msg.role, msg.content, false);
                 }
@@ -299,92 +324,27 @@
             document.getElementById('discussion-id-display').textContent = "ID: " + state.discussionId;
         }
 
-        // --- LANGUAGE & TRANSLATION ---
-        function t(key, ...args) {
-            const langObj = I18N[state.lang] || I18N.fr;
-            let val = langObj[key];
-            if (typeof val === 'function') return val(...args);
-            return val || key;
-        }
-
-        function updateLanguageUI() {
-            const L = I18N[state.lang];
-            document.querySelector('.lang-new-chat').textContent = L.newChat;
-            document.querySelector('.lang-welcome-sub').textContent = L.welcomeSub;
-            document.querySelector('.lang-start-btn').textContent = L.startBtn;
-            document.querySelector('.lang-end-hint').textContent = L.endHint;
-            userInput.placeholder = L.placeholder;
-
-        }
-
-        langSelector.addEventListener('change', (e) => {
-            state.lang = e.target.value;
-            updateLanguageUI();
-            if (state.utteranceCount === 0) resetChat();
-        });
-
-        // --- TIMER ---
-        function startTimer(reset = true) {
-            if (reset) {
-                state.startTime = Date.now();
-                state.warningSent = false;
-                state.pendingTimeUp = false;
-            }
-            if (state.timerInterval) clearInterval(state.timerInterval);
-
-            state.timerInterval = setInterval(() => {
-                if (!state.startTime) return;
-
-                const elapsed = Date.now() - state.startTime;
-                const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
-
-                const m = Math.floor(remaining / 60000);
-                const s = Math.floor((remaining % 60000) / 1000);
-                const text = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
-                timerDisplay.textContent = text;
-                mobileTimer.textContent = text;
-
-                if (elapsed > WARNING_TIME_MS) {
-                    timerDisplay.classList.add('timer-warning');
-
-                    if (!state.warningSent) {
-                        state.warningSent = true;
-                        injectSystemMessage(t('timeUpWarning'));
-                    }
-                }
-
-                if (remaining <= 0 && state.step !== STEPS.LAST_TURN && state.step !== STEPS.END) {
-                    if (userInput.value.trim().length > 0) {
-                        state.pendingTimeUp = true;
-                    } else {
-                        triggerTimeUpSequence();
-                    }
-                }
-            }, 1000);
-        }
-
-        function triggerTimeUpSequence() {
-             if(state.timerInterval) clearInterval(state.timerInterval);
-             state.step = STEPS.LAST_TURN;
-             const msg = t('timeUpFinal');
-             // On force ce message système
-             processTurn(null, msg);
-             state.pendingTimeUp = false;
-        }
-
-        function injectSystemMessage(text) {
-            state.utteranceCount++;
-            appendMessage('assistant', text);
-            state.history.push({ role: 'assistant', content: text });
-            logToSheet(state.discussionId, state.utteranceCount, text).catch(console.error);
-            saveState();
-        }
+        // ==================================================================================
+        // PART 2: MAIN FUNCTIONS
+        // ==================================================================================
 
         // --- CORE LOGIC ---
+
+        /**
+         * Cerveau de l'application
+         * Détermine la réponse à donner en fonction de l'étape actuelle (state.step) et du message de l'utilisateur.
+         * Retourne un objet : { text: "Réponse à afficher", useLLM: true/false }
+         * - Si useLLM est faux, le script répond immédiatement avec une phrase pré-écrite. (hard-coding)
+         * - Si useLLM est vrai, on enverra la requête à l'IA.
+         */
+        /**
+         * Cerveau de l'application
+         * Détermine la réponse à donner en fonction de l'étape actuelle (state.step) et du message de l'utilisateur
+         */
         function getResponseLogic(userMessage) {
             const msg = userMessage ? userMessage.toLowerCase().trim() : "";
 
+            // Fonction locale pour détecter si l'utilisateur dit "oui" ou confirme
             const isAffirmative = (text) => {
                 const triggers = [
                     "oui", "yes", "hai", "はい",
@@ -396,45 +356,51 @@
                 return triggers.some(t => text.includes(t));
             };
 
+            // Cas spécial : Le temps est écoulé
             if (state.step === STEPS.LAST_TURN) {
                  state.step = STEPS.END;
                  return { text: t('finalMessage'), useLLM: false };
             }
 
+            // Étape 1 : Salutation initiale
             if (state.step === STEPS.GREETING) {
                 state.step = STEPS.CAPTURE_NICKNAME;
                 startTimer(true);
                 return { text: t('greeting'), useLLM: false };
             }
 
+            // Étape 2 : Capture du nom
             if (state.step === STEPS.CAPTURE_NICKNAME) {
-                state.nickname = extractName(userMessage, state.lang);
+                state.nickname = extractName(userMessage, state.lang); //
 
                 if (state.lang === 'en') {
-                     state.useFormal = false;
-                     state.step = STEPS.EMOTION_ASK;
-                     return { text: t('formality', state.nickname), useLLM: false };
+                      state.useFormal = false;
+                      state.step = STEPS.EMOTION_ASK;
+                      return { text: t('formality', state.nickname), useLLM: false };
                 } else if (state.lang === 'ja') {
-                     state.useFormal = true;
-                     state.step = STEPS.EMOTION_ASK;
-                     return { text: t('formality', state.nickname), useLLM: false };
+                      state.useFormal = true;
+                      state.step = STEPS.EMOTION_ASK;
+                      return { text: t('formality', state.nickname), useLLM: false };
                 } else {
-                     state.step = STEPS.FORMALITY;
-                     return { text: t('formality', state.nickname), useLLM: false };
+                      state.step = STEPS.FORMALITY;
+                      return { text: t('formality', state.nickname), useLLM: false };
                 }
             }
 
+            // Étape 3 : Politesse (FR)
             if (state.step === STEPS.FORMALITY) {
                 state.useFormal = !msg.includes("tu") && !msg.includes("tutoie");
                 state.step = STEPS.EMOTION_ASK;
                 return { text: t('askEmotion', state.useFormal), useLLM: false };
             }
 
+            // Étape 4 : Demande émotion
             if (state.step === STEPS.EMOTION_ASK) {
                 state.step = STEPS.EMOTION_DESCRIBE;
                 return { text: t('askDescribe', state.useFormal), useLLM: false };
             }
 
+            // Étape 5 : Description -> Choix émotion aléatoire
             if (state.step === STEPS.EMOTION_DESCRIBE) {
                 const rnd = EMOTIONS_LIST[Math.floor(Math.random() * EMOTIONS_LIST.length)];
                 state.emotion = rnd;
@@ -444,57 +410,70 @@
                 return { text: t('suggestEmotion', state.useFormal, rnd, translatedEm), useLLM: false };
             }
 
+            // Étape 6 : Suggestion
             if (state.step === STEPS.EMOTION_SUGGEST) {
                 if (isAffirmative(msg)) {
-                     state.step = STEPS.SITUATION_ASK;
-                     return { text: t('continue', state.useFormal), useLLM: false };
+                      state.step = STEPS.SITUATION_ASK;
+                      return { text: t('continue', state.useFormal), useLLM: false };
                 } else {
-                     state.step = STEPS.EMOTION_ALTERNATIVE;
-                     return { text: t('alternative', state.useFormal), useLLM: false };
+                      state.step = STEPS.EMOTION_ALTERNATIVE;
+                      return { text: t('alternative', state.useFormal), useLLM: false };
                 }
             }
 
+            // Branche alternative
             if (state.step === STEPS.EMOTION_ALTERNATIVE) {
                  if (isAffirmative(msg)) {
-                     state.step = STEPS.EMOTION_DESCRIBE;
-                     return { text: t('askDescribe', state.useFormal), useLLM: false };
+                      state.step = STEPS.EMOTION_DESCRIBE;
+                      return { text: t('askDescribe', state.useFormal), useLLM: false };
                  } else {
-                     state.step = STEPS.END_OR_SUGGEST;
-                     return { text: t('endSuggest', state.useFormal), useLLM: false };
+                      state.step = STEPS.END_OR_SUGGEST;
+                      return { text: t('endSuggest', state.useFormal), useLLM: false };
                  }
             }
 
+            // Étape 7 : Transition vers LLM
             if (state.step === STEPS.SITUATION_ASK) {
                 state.step = STEPS.NATURAL_CONVERSATION;
                 return { text: t('listen'), useLLM: true };
             }
 
+            // Par défaut : LLM
             state.step = STEPS.NATURAL_CONVERSATION;
             return { text: null, useLLM: true };
         }
 
+        /**
+         * Fonction principale de gestion des tours
+         * Appellée quand l'utilisateur envoie un message ou quand on clique sur "Start".
+         * 1. Affiche le message de l'utilisateur.
+         * 2. Décide de la logique (via getResponseLogic).
+         * 3. Soit affiche une réponse scriptée, soit appelle l'API LLM.
+         */
         async function processTurn(userText = null, forceBotText = null) {
+            // Désactive l'interface pendant le traitement
             userInput.disabled = true;
             sendBtn.disabled = true;
             welcomeScreen.classList.add('hidden');
             chatLog.classList.remove('hidden');
 
+            // 1. Traitement du message utilisateur
             if (userText) {
                 state.utteranceCount++;
                 appendMessage('user', userText);
                 state.history.push({role: 'user', content: userText});
+                // Log asynchrone vers Google Sheets
                 logToSheet(state.discussionId, state.utteranceCount, userText).catch(console.error);
                 saveState();
             }
 
+            // 2. Cas où le système force un message (ex: "Temps écoulé")
             if (forceBotText) {
-                await new Promise(r => setTimeout(r, 600));
+                await new Promise(r => setTimeout(r, 600)); // Petite pause pour le réalisme
 
                 state.utteranceCount++;
-
                 appendMessage('assistant', forceBotText);
                 state.history.push({role: 'assistant', content: forceBotText});
-
                 logToSheet(state.discussionId, state.utteranceCount, forceBotText).catch(console.error);
 
                 saveState();
@@ -503,15 +482,16 @@
                 return;
             }
 
+            // 3. Calcul de la réponse via la logique d'états
             const logic = getResponseLogic(userText);
 
+            // CAS A : Réponse scriptée (pas d'IA)
             if (!logic.useLLM) {
                 await new Promise(r => setTimeout(r, 600));
 
                 state.utteranceCount++;
                 appendMessage('assistant', logic.text);
                 state.history.push({role: 'assistant', content: logic.text});
-
                 logToSheet(state.discussionId, state.utteranceCount, logic.text).catch(console.error);
                 saveState();
 
@@ -522,32 +502,39 @@
                 }
                 updateEndButtonVisibility();
 
+                // Si le temps s'est écoulé pendant ce tour, on déclenche la séquence de fin
                 if (state.pendingTimeUp && state.step !== STEPS.END) {
                     setTimeout(triggerTimeUpSequence, 1000);
                 }
 
+            // CAS B : Appel à l'IA (LLM)
             } else {
+                // Affiche un indicateur de chargement (...)
                 const botMessageDiv = appendMessage('assistant', '<span class="animate-pulse">...</span>');
                 const botContentDiv = botMessageDiv.querySelector('.markdown-body');
 
                 try {
+                    // Construction du Prompt Système (Instructions pour l'IA)
                     let sysPrompt = `You are a helpful, empathetic AI assistant exploring emotions. Language: ${state.lang}.`;
                     sysPrompt += ` Keep answers concise (max 3 sentences) unless asked otherwise.`;
                     sysPrompt += ` ALWAYS end with a question to the user.`;
 
+                    // Injection du contexte utilisateur (Nom, tutoiement/vouvoiement)
                     if (state.nickname) sysPrompt += ` The user's name is ${state.nickname}.`;
                     if (state.lang === 'fr' && state.useFormal) sysPrompt += ` Use 'vous'.`;
                     else if (state.lang === 'fr') sysPrompt += ` Use 'tu'.`;
 
+                    // Préparation de l'historique des 10 derniers messages pour le contexte
                     const messagesToSend = [
                         {role: 'system', content: sysPrompt},
                         ...state.history.slice(-10)
                     ];
 
+                    // Appel réseau vers le script Google Apps
                     const response = await fetch(GOOGLE_SCRIPT_URL, {
                         method: 'POST',
                         redirect: "follow",
-                        headers: {"Content-Type": "text/plain;charset=utf-8"},
+                        headers: {"Content-Type": "text/plain;charset=utf-8"}, // "text/plain" évite une requête OPTIONS (CORS preflight)
                         body: JSON.stringify({
                             action: 'chat',
                             messages: messagesToSend
@@ -557,9 +544,11 @@
                     const data = await response.json();
                     const botText = data.message ? data.message.content : (data.content || "Error");
 
+                    // Affichage et formatage (Markdown + coloration syntaxique)
                     botContentDiv.innerHTML = marked.parse(botText);
                     hljs.highlightAll();
 
+                    // Mise à jour de l'état
                     state.utteranceCount++;
                     state.history.push({role: 'assistant', content: botText});
                     state.llmTurnCount++;
@@ -582,10 +571,11 @@
             }
         }
 
+        // Envoie les logs de conversation vers Google Sheets via une requête POST.
         async function logToSheet(id, utteranceNum, text) {
              fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors',
+                mode: 'no-cors', // Important : 'no-cors' permet d'envoyer des données sans attendre de réponse lisible (évite les erreurs CORS strictes)
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     action: 'log',
@@ -597,9 +587,12 @@
             });
         }
 
+        // Crée et insère le HTML d'un message dans la zone de chat.
         function appendMessage(role, text, save = true) {
             const isUser = role === 'user';
+            // Couleur de fond différente pour l'IA
             const bgColor = isUser ? '' : 'bg-[#444654]';
+            // Icônes différentes (YOU vs Logo SVG)
             const icon = isUser
                 ? '<div class="h-8 w-8 rounded bg-purple-600 flex items-center justify-center font-bold text-xs">YOU</div>'
                 : '<div class="h-8 w-8 rounded bg-green-500 flex items-center justify-center"><svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="0 0 24 24" class="h-5 w-5 text-white"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path></svg></div>';
@@ -618,9 +611,10 @@
 
             chatLog.insertAdjacentHTML('beforeend', html);
             scrollToBottom();
-            return chatLog.lastElementChild;
+            return chatLog.lastElementChild; // Retourne l'élément créé (utile pour modifier le contenu "..." plus tard)
         }
 
+        // Réactive l'interface utilisateur après une réponse (champs de saisie, focus, etc).
         function resetUI() {
             userInput.disabled = false;
             sendBtn.disabled = false;
@@ -630,24 +624,111 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
 
-        // --- HELPER FUNCTIONS ---
+        // ==================================================================================
+        // PART 3: HELPER FUNCTIONS
+        // ==================================================================================
 
+        // --- LANGUAGE & TRANSLATION ---
+
+        // Récupère la traduction dans l'objet I18N selon la langue actuelle (state.lang).
+        function t(key, ...args) {
+            const langObj = I18N[state.lang] || I18N.fr;
+            let val = langObj[key];
+            if (typeof val === 'function') return val(...args); // Si c'est une fonction (pour insérer un nom), on l'exécute.
+            return val || key; // Fallback sur la clé si pas de traduction trouvée.
+        }
+
+        // Met à jour tous les textes de l'interface (boutons, labels) quand on change de langue.
+        function updateLanguageUI() {
+            const L = I18N[state.lang];
+            document.querySelector('.lang-new-chat').textContent = L.newChat;
+            document.querySelector('.lang-welcome-sub').textContent = L.welcomeSub;
+            document.querySelector('.lang-start-btn').textContent = L.startBtn;
+            document.querySelector('.lang-end-hint').textContent = L.endHint;
+            userInput.placeholder = L.placeholder;
+        }
+
+        // --- TIMER & Others ---
+
+        // Gère le compte à rebours de la session.
+        function startTimer(reset = true) {
+            if (reset) {
+                state.startTime = Date.now();
+                state.warningSent = false;
+                state.pendingTimeUp = false;
+            }
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            state.timerInterval = setInterval(() => {
+                if (!state.startTime) return;
+
+                const elapsed = Date.now() - state.startTime;
+                const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
+
+                // Formatage mm:ss
+                const m = Math.floor(remaining / 60000);
+                const s = Math.floor((remaining % 60000) / 1000);
+                const text = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                timerDisplay.textContent = text;
+                mobileTimer.textContent = text;
+
+                // Avertissement visuel (rouge) et message système quand on approche de la fin.
+                if (elapsed > WARNING_TIME_MS) {
+                    timerDisplay.classList.add('timer-warning');
+
+                    if (!state.warningSent) {
+                        state.warningSent = true;
+                        injectSystemMessage(t('timeUpWarning'));
+                    }
+                }
+
+                // Fin du temps
+                if (remaining <= 0 && state.step !== STEPS.LAST_TURN && state.step !== STEPS.END) {
+                    // Si l'utilisateur est en train d'écrire, on attend qu'il envoie son message (pendingTimeUp)
+                    if (userInput.value.trim().length > 0) {
+                        state.pendingTimeUp = true;
+                    } else {
+                        triggerTimeUpSequence();
+                    }
+                }
+            }, 1000);
+        }
+
+        // Fonction appelée quand le temps tombe à zéro.
+        function triggerTimeUpSequence() {
+             if(state.timerInterval) clearInterval(state.timerInterval);
+             state.step = STEPS.LAST_TURN;
+             const msg = t('timeUpFinal');
+             processTurn(null, msg); // Force l'affichage du message de fin
+             state.pendingTimeUp = false;
+        }
+
+        // Injecte un message de l'IA sans passer par le processus normal (pour les avertissements de temps).
+        function injectSystemMessage(text) {
+            state.utteranceCount++;
+            appendMessage('assistant', text);
+            state.history.push({ role: 'assistant', content: text });
+            logToSheet(state.discussionId, state.utteranceCount, text).catch(console.error);
+            saveState();
+        }
+
+        // Fait défiler la fenêtre vers le bas (scroll smooth).
         function scrollToBottom() {
             const container = document.getElementById('chat-container');
-            // Small timeout ensures DOM is rendered before scrolling
             setTimeout(() => {
                 container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
             }, 100);
         }
 
+        // Utilise des expressions régulières (Regex) pour trouver le prénom dans une phrase.
+        // Ex: "Je m'appelle Thomas" -> "Thomas".
         function extractName(input, lang) {
             let text = input.trim();
-
-            // 1. Clean starting/ending punctuation
+            // Nettoyage de la ponctuation au début/fin
             text = text.replace(/^[,.!?;:。]+|[,.!?;:。]+$/g, '');
 
             if (lang === 'fr') {
-                // Expanded patterns to catch more natural phrasing
                 const prefix = /^(?:bonjour|salut|coucou)?\s*,?\s*(?:je m['’]appelle|mon nom est|appelez[- ]moi|appelle[- ]moi|moi,? c['’]est|c['’]est|je suis|tu peux m['’]appeler)\s+/i;
                 const separators = /\s+(?:parce que|car|puisque|mais|c['’]est-à-dire).*$/i;
                 const smallEndings = /(?:[, ]+d['’]accord\??$)|(?:[, ]+hein\??$)/i;
@@ -657,7 +738,6 @@
             else if (lang === 'en') {
                 const prefix = /^(?:hello|hi|hey)?\s*,?\s*(?:my\s+name\s+is|i\s+am|i['’]m|call\s+me|please\s*,?\s*call\s+me|you\s+can\s+call\s+me|refer\s+to\s+me\s+as|it['’]s)\s+/i;
                 const separators = /\s+(?:because|since|as|but).*$/i;
-
                 text = text.replace(prefix, '').replace(separators, '');
             }
             else if (lang === 'ja') {
@@ -666,18 +746,19 @@
                 text = text.replace(suffix, '').replace(prefix, '');
             }
 
-            // Capitalize first letter, lowercase rest (optional style choice, good for names)
             text = text.trim();
             if (text.length > 0) {
+                // Majuscule à la première lettre
                 return text.charAt(0).toUpperCase() + text.slice(1);
             }
             return text;
         }
 
+        // Affiche ou cache le bouton "Stop / Fin" selon l'avancement de la discussion.
+        // On ne l'affiche qu'après quelques échanges.
         function updateEndButtonVisibility() {
             const desktopBtn = document.getElementById('end-btn-desktop');
             const mobileBtn = document.getElementById('end-btn-mobile');
-
 
             if (state.llmTurnCount >= 2 && state.step !== STEPS.END) {
                 desktopBtn.classList.remove('hidden');
@@ -690,6 +771,7 @@
             }
         }
 
+        // Déclenché manuellement par le bouton Stop.
         function triggerEndChat() {
             if (state.step === STEPS.END) return;
             state.step = STEPS.END;
@@ -697,29 +779,26 @@
             updateEndButtonVisibility();
         }
 
+        // Affiche une petite notification noire (Toast) temporaire au centre de l'écran.
         function showToast(message) {
             const toast = document.getElementById('toast-notification');
             const msgSpan = document.getElementById('toast-message');
 
             msgSpan.textContent = message;
             toast.classList.remove('hidden');
-            // Small delay to allow class removal to register before adding opacity for transition
-            setTimeout(() => toast.classList.remove('opacity-0'), 10);
+            setTimeout(() => toast.classList.remove('opacity-0'), 10); // Transition fade-in
 
-            // Hide after 3 seconds
             setTimeout(() => {
                 toast.classList.add('opacity-0');
                 setTimeout(() => toast.classList.add('hidden'), 500); // Wait for fade out
             }, 3000);
         }
 
+        // Vérifie si le message de l'utilisateur est assez long (25 chars).
+        // N'est actif que durant les phases de conversation approfondie avec l'IA.
         function validateInput(text) {
-            // Logic: If we are in the "LLM" phases (Situation Ask or Natural Conversation)
-            // We enforce the limit.
-            // STEPS.SITUATION_ASK (7) -> User is answering the request to describe context
-            // STEPS.NATURAL_CONVERSATION (8) -> Ongoing chat
             if (state.step === STEPS.SITUATION_ASK || state.step === STEPS.NATURAL_CONVERSATION) {
-                // Ignore "fin" commands so user isn't trapped
+                // On autorise les commandes de fin courtes
                 if (text.match(/fin|stop|bye|quit|terminer|おわり|終了/i)) return true;
 
                 if (text.length < 25) {
@@ -730,12 +809,14 @@
             return true;
         }
 
+        // Désactive l'interface à la fin de la session.
         function endChat() {
             userInput.disabled = true;
             userInput.placeholder = "Discussion terminée / Chat ended.";
             if(state.timerInterval) clearInterval(state.timerInterval);
         }
 
+        // Redémarre tout à zéro (Nettoyage local storage, reset variables, reset UI).
         function resetChat() {
             localStorage.removeItem('ai_motion_state');
             resetState();
@@ -751,6 +832,12 @@
         }
 
         // --- EVENTS ---
+        langSelector.addEventListener('change', (e) => {
+            state.lang = e.target.value;
+            updateLanguageUI();
+            if (state.utteranceCount === 0) resetChat(); // Reset si on change de langue au début
+        });
+
         sendBtn.addEventListener('click', () => {
             const text = userInput.value.trim();
             if (text) {
@@ -763,7 +850,7 @@
         userInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                // Important: Wanakana needs a moment to settle if converting
+                // Timeout pour laisser Wanakana (input japonais) finir la conversion des caractères
                 setTimeout(() => {
                     const text = userInput.value.trim();
                     if (text) {
@@ -775,6 +862,7 @@
             }
         });
 
+        // Redimensionnement automatique de la zone de texte (textarea) quand on écrit
         userInput.addEventListener('input', () => {
             charCount.textContent = userInput.value.length + " chars";
             userInput.style.height = 'auto';
@@ -789,6 +877,8 @@
         document.getElementById('new-chat-mobile').addEventListener('click', resetChat);
         document.getElementById('end-btn-desktop').addEventListener('click', triggerEndChat);
         document.getElementById('end-btn-mobile').addEventListener('click', triggerEndChat);
+
+        // Lance l'initialisation quand le DOM est prêt
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
