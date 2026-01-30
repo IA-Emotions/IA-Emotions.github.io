@@ -122,15 +122,15 @@
         // URL du backend (Google Apps Script) qui gère l'appel au LLM et l'enregistrement dans Google Sheets.
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDu9NwoXRvtpKWeeHTpLEHVHxJExAB_N-bdPpZAWbRzxUxH_yCw9lbRipq157pjxOr/exec";
 
-        // Durée totale de la session en millisecondes (10 minutes).
+        // Durée totale de la session en millisecondes (dix minutes).
         const SESSION_DURATION_MS = 10 * 60 * 1000;
 
-        // Moment où l'avertissement de temps apparaît (7 minutes).
+        // Moment où l'avertissement de temps apparaît (sept minutes).
         const WARNING_TIME_MS = 7 * 60 * 1000;
 
         // --- I18N & TEXT CONTENT ---
-        // Dictionnaire contenant toutes les traductions (Français, Anglais, Japonais).
-        // Contient des chaînes simples et des fonctions qui retournent des chaînes dynamiques (ex: incluant le nom).
+        // Dictionnaire contenant toutes les traductions (français, anglais, japonais).
+        // Contient des chaînes simples et des fonctions qui retournent des chaînes dynamiques (ex : incluant le nom).
         const I18N = {
             fr: {
                 newChat: "Nouvelle discussion",
@@ -145,7 +145,7 @@
                 suggestEmotion: (formal, em, trans) => `Je vois, merci pour ce partage. J'aimerais maintenant aborder une émotion différente : "${trans}". ${formal ? "La connaissez-vous" : "La connais-tu"} ?`,
                 continue: (formal) => `D'accord. ${formal ? "Voudriez-vous" : "Voudrais-tu"} me raconter une situation spécifique où ${formal ? "vous avez" : "tu as"} ressenti cela ? ${formal ? "N'hésitez" : "N'hésite"} pas à détailler.`,
                 alternative: (formal) => `Pas de souci. ${formal ? "Souhaitez-vous" : "Souhaites-tu"} parler d'une autre émotion ?`,
-                endSuggest: (formal) => `${formal ? "Souhaitez-vous" : "Souhaites-tu"} que je propose autre chose ou préfèrez-vous arrêter ?`,
+                endSuggest: (formal) => `${formal ? "Souhaitez-vous" : "Souhaites-tu"} que je propose autre chose ou préférez-vous arrêter ?`,
                 listen: "Je vous écoute.",
                 timeUpWarning: "Le temps passe vite ! Il nous reste quelques minutes.",
                 timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
@@ -219,7 +219,7 @@
         // Un mapping vers le japonais n'as pas été inclus pour des raisons de simplicité
 
         // Enumération des étapes de la machine à états (State Machine).
-        // Cela permet de savoir où on en est dans le scénario (Bonjour -> Nom -> Émotion -> Description -> etc).
+        // Cela permet de savoir où on en est dans le scénario (Bonjour → Nom → Émotion → Description → etc).
         const STEPS = {
             GREETING: 1, CAPTURE_NICKNAME: 2, FORMALITY: 3, EMOTION_ASK: 4, EMOTION_DESCRIBE: 5,
             EMOTION_SUGGEST: 6, SITUATION_ASK: 7, NATURAL_CONVERSATION: 8,
@@ -257,7 +257,7 @@
         };
 
         // --- INIT & LOCAL STORAGE ---
-       // Fonction lancée au chargement de la page.
+        // Fonction lancée au chargement de la page.
         // Elle tente de récupérer une session existante dans le localStorage du navigateur.
         function init() {
             const saved = localStorage.getItem('ai_motion_state');
@@ -316,7 +316,7 @@
         function restoreChatLog() {
             chatLog.innerHTML = '';
             state.history.forEach(msg => {
-                // On n'affiche pas les messages "système" (les instructions cachées au LLM)
+                // On n'affiche pas les messages "système" (les instructions cachées au LLM).
                 if(msg.role !== 'system') {
                     appendMessage(msg.role, msg.content, false);
                 }
@@ -334,7 +334,7 @@
          * Cerveau de l'application
          * Détermine la réponse à donner en fonction de l'étape actuelle (state.step) et du message de l'utilisateur.
          * Retourne un objet : { text: "Réponse à afficher", useLLM: true/false }
-         * - Si useLLM est faux, le script répond immédiatement avec une phrase pré-écrite. (hard-coding)
+         * - Si useLLM est faux, le script répond immédiatement avec une phrase pré-écrite. (hard coding).
          * - Si useLLM est vrai, on enverra la requête à l'IA.
          */
         /**
@@ -400,7 +400,7 @@
                 return { text: t('askDescribe', state.useFormal), useLLM: false };
             }
 
-            // Étape 5 : Description -> Choix émotion aléatoire
+            // Étape 5 : Description → Choix émotion aléatoire
             if (state.step === STEPS.EMOTION_DESCRIBE) {
                 const rnd = EMOTIONS_LIST[Math.floor(Math.random() * EMOTIONS_LIST.length)];
                 state.emotion = rnd;
@@ -467,7 +467,7 @@
                 saveState();
             }
 
-            // 2. Cas où le système force un message (ex: "Temps écoulé")
+            // 2. Cas où le système force un message (ex : "Temps écoulé")
             if (forceBotText) {
                 await new Promise(r => setTimeout(r, 600)); // Petite pause pour le réalisme
 
@@ -685,7 +685,7 @@
 
                 // Fin du temps
                 if (remaining <= 0 && state.step !== STEPS.LAST_TURN && state.step !== STEPS.END) {
-                    // Si l'utilisateur est en train d'écrire, on attend qu'il envoie son message (pendingTimeUp)
+                    // Si l'utilisateur est en train d'écrire, on attend qu'il envoie son message (pendingTimeUp).
                     if (userInput.value.trim().length > 0) {
                         state.pendingTimeUp = true;
                     } else {
@@ -722,7 +722,7 @@
         }
 
         // Utilise des expressions régulières (Regex) pour trouver le prénom dans une phrase.
-        // Ex: "Je m'appelle Thomas" -> "Thomas".
+        // Ex: "Je m'appelle Thomas" → "Thomas".
         function extractName(input, lang) {
             let text = input.trim();
             // Nettoyage de la ponctuation au début/fin
