@@ -57,7 +57,7 @@
     </div>
 
     <div class="mt-auto px-3 pb-4">
-      <div id="timer-display" class="hidden text-xs text-gray-400 font-mono mb-2">00:00</div>
+      <div id="timer-display" class="text-xs text-gray-400 font-mono mb-2">00:00</div>
       <button id="end-btn-desktop" class="hidden w-full items-center justify-center gap-2 rounded border border-red-500/50 bg-red-500/10 p-2 text-xs text-red-200 transition-colors hover:bg-red-500/20">
         Stop / Fin
       </button>
@@ -66,7 +66,7 @@
 
   <div class="flex flex-1 flex-col relative">
     <div class="flex items-center justify-between border-b border-white/20 bg-gray-800 p-2 text-gray-100 md:hidden">
-      <div class="hidden text-xs font-mono" id="mobile-timer">00:00</div>
+      <div class="text-xs font-mono" id="mobile-timer">00:00</div>
       <button id="end-btn-mobile" class="hidden px-2 py-1 text-xs text-red-300 border border-red-900 rounded bg-red-900/20 mr-2">
         Fin
       </button>
@@ -193,7 +193,6 @@ PHASE 5: Forward reflection
 Ending rule:
 - If the user clearly indicates that they have nothing more to add or want to finish, do not ask any new questions.
 - Do not reopen exploration after the user agrees to end.
-
 - Instead, acknowledge the closure briefly, say a natural goodbye, and you MUST append the exact word [FIN] at the very end of your response to signal the system to close the chat.
 
 Important constraints:
@@ -459,7 +458,7 @@ Important constraints:
 
         const messagesToSend = [
           { role: 'system', content: sysPrompt },
-          ...state.history.slice(-6) // Previous: 10
+          ...state.history.slice(-6)
         ];
 
         const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -472,7 +471,6 @@ Important constraints:
         const data = await response.json();
         const botText = data.message ? data.message.content : (data.content || "Error");
 
-        // Grand End!
         let shouldEnd = false;
         if (botText.includes('[FIN]')) {
             botText.replace('[FIN]', '').trim();
@@ -552,7 +550,6 @@ Important constraints:
       userInput.disabled = false;
       sendBtn.disabled = false;
       userInput.value = '';
-      userInput.style.height = 'auto';
       userInput.focus();
       charCount.textContent = "0 chars";
       window.scrollTo(0, document.body.scrollHeight);
