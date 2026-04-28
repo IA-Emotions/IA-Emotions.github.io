@@ -425,12 +425,14 @@ Ending rule:
     return SMALLTALK_SYSTEM_PROMPT(state.lang);
   }
 
-  if (state.llmMode === "emotion_intro") {
+  if (state.llmMode === "intro_emotion") {
     return EMOTION_INTRO_SYSTEM_PROMPT(state.lang);
   }
 
   return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
 }
+
+
 
     // Switch to emotion mode after 3 assistant turns in smalltalk mode
     function maybeSwitchModeAfterAssistantReply() {
@@ -443,6 +445,7 @@ Ending rule:
       else {
         state.llmMode = "discussion_emotion";
     } }
+
 
     async function processTurn(userText = null, forceBotText = null) {
       userInput.disabled = true;
