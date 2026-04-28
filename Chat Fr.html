@@ -440,15 +440,19 @@ Ending rule:
 
     // Switch to emotion mode after 3 assistant turns in smalltalk mode
   function maybeSwitchModeAfterAssistantReply() {
-      if (state.llmMode !== "smalltalk") return;
-      state.smalltalkTurns += 1;
-      if ((state.smalltalkTurns > 10) && (state.smalltalkTurns < 20))
-      {
+      state.smalltalkTurns++;
+      if ((state.smalltalkTurns >= 4) && (state.smalltalkTurns <= 9)) {
         state.llmMode = "intro_emotion";
       }
-      else {
+      else if (state.smalltalkTurns > 9) {
         state.llmMode = "discussion_emotion";
-      } }
+      }
+      else {
+        state.llmMode = "smalltalk";
+      }
+      console.log("voici l´état du llm pour le tour: ", state.smalltalkTurns, " : ", state.llmMode)
+
+    }
 
 
     async function processTurn(userText = null, forceBotText = null) {
