@@ -326,7 +326,7 @@ Ending rule:
       llmTurnCount: 0,
 
       // prompt mode handling
-      llmMode: "smalltalk",          // "smalltalk" | "emotion_into" | "emotion_discussion"
+      llmMode: "smalltalk",          // "smalltalk" | "intro_emotion" | "discussion_emotion"
       smalltalkTurns: 0,             // count LLM assistant replies in smalltalk mode
       emotionIntroTurns: 0,
 
@@ -429,22 +429,26 @@ Ending rule:
     return EMOTION_INTRO_SYSTEM_PROMPT(state.lang);
   }
 
+  if (state.llmMode === "discussion_emotion") {
+    return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
+  }
+
   return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
 }
 
 
 
     // Switch to emotion mode after 3 assistant turns in smalltalk mode
-    function maybeSwitchModeAfterAssistantReply() {
+  function maybeSwitchModeAfterAssistantReply() {
       if (state.llmMode !== "smalltalk") return;
       state.smalltalkTurns += 1;
-      if ((state.smalltalkTurns > 3) && (state.smalltalkTurns < 8))
+      if ((state.smalltalkTurns > 10) && (state.smalltalkTurns < 20))
       {
         state.llmMode = "intro_emotion";
       }
       else {
         state.llmMode = "discussion_emotion";
-    } }
+      } }
 
 
     async function processTurn(userText = null, forceBotText = null) {
