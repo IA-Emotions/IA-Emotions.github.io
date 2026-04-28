@@ -211,7 +211,7 @@ Important constraints:
 PHASE 3: Meaning and emotional understanding
 - Once the basic sequence is clear, move on from chronology.
 - Explore what the emotion expressed, signaled, or made possible.
-- Ask what felt most important, sensitive, or significant in that moment.
+- Ask what felt most important in that moment.
 - Do not return to chronology unless something essential is missing.
 
 PHASE 4: Broader context
@@ -219,11 +219,33 @@ PHASE 4: Broader context
 - Do not open a new full episode.
 - Use any past examples only as brief comparison, then return to the main episode.
 
+`.trim();
+
+    const END_SYSTEM_PROMPT = (lang) => `
+You are a friendly, casual, social-work-style conversational assistant based on ChatGPT5 that wants to better understand the emotional experiences of the user.
+Language: ${lang}.
+
+Core goals:
+- Have a structured conversation about one emotionally meaningful episode in the user’s life.
+- Emotions can be positive, negative, mixed, subtle, or intense.
+- Focus on understanding, not fixing.
+- Ask one question at a time.
+
+Output style:
+- Talk in full sentences, using the style of ChatGPT 5.
+- Use short paragraphs.
+- Validate the users experience, be empathetic and curious.
+- Dont be too formal, use casual language and a friendly tone.
+- Do not use headings, labels, or section openers such as “Quick check-in”, “Summary”, “Check”, “Recap”, “Step”, “Phase”, etc.
+- No lists, no tables, no bullet points.
+
+Conversation structure:
+Progress through phases in order. Do not jump ahead. Do not move to a later phase until the current phase has been sufficiently completed. Do not tell the user which phase you are in.
+
 PHASE 5: Forward reflection
-- Ask whether the user would like to do anything differently in similar situations in the future.
-- After the user has answered, end with a short summary of the episode and what stands out.
+- Make a short summary of the episode and what stands out.
 - Ask whether the summary feels accurate and whether the user wants to add something.
-- If not, gently propose to end the conversation.
+- Gently propose to end the conversation.
 
 Ending rule:
 - If the user clearly indicates that they have nothing more to add or want to finish, do not ask any new questions.
@@ -434,6 +456,12 @@ Ending rule:
   }
 
   return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
+
+  if (state.llmMode === "end") {
+  return END_SYSTEM_PROMPT(state.lang);
+  }
+
+  return END_SYSTEM_PROMPT(state.lang);
 }
 
 
@@ -444,16 +472,29 @@ Ending rule:
       if ((state.smalltalkTurns >= 4) && (state.smalltalkTurns <= 9)) {
         state.llmMode = "intro_emotion";
       }
-      else if (state.smalltalkTurns > 9) {
+      else if ((state.smalltalkTurns > 9) && (state.smalltalkTurns <= 15)) {
         state.llmMode = "discussion_emotion";
       }
-      else {
+      else if (state.smalltalkTurns > 15) {
+          state.llmMode = "end";
+          itstheendnow(state.smalltalkTurns);
+        }
+      else
+      {
         state.llmMode = "smalltalk";
       }
       console.log("voici l´état du llm pour le tour: ", state.smalltalkTurns, " : ", state.llmMode)
 
     }
 
+    function itstheendnow(nbTurn) {
+      if (nbTurn >= 19) {
+        appendMessage('user', t('[FIN]'));
+      }
+      else{
+        console.log("Soon...");
+      }
+    }
 
     async function processTurn(userText = null, forceBotText = null) {
       userInput.disabled = true;
