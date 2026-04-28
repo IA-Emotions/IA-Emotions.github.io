@@ -123,7 +123,7 @@
     // ==================================================================================
     // CONFIG
     // ==================================================================================
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDu9NwoXRvtpKWeeHTpLEHVHxJExAB_N-bdPpZAWbRzxUxH_yCw9lbRipq157pjxOr/exec";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz9X4BRBUt3sOF4_AzMGOKSzRgZwMqK-SgnoJsWCuvDasAtuK25KLeGVzO2oVzE0jCw/exec";
     const SESSION_DURATION_MS = 10 * 60 * 1000;
     const WARNING_TIME_MS = 7 * 60 * 1000;
 
@@ -193,7 +193,8 @@ PHASE 5: Forward reflection
 Ending rule:
 - If the user clearly indicates that they have nothing more to add or want to finish, do not ask any new questions.
 - Do not reopen exploration after the user agrees to end.
-- Instead, acknowledge the closure briefly and end the conversation naturally.
+
+- Instead, acknowledge the closure briefly, say a natural goodbye, and you MUST append the exact word [FIN] at the very end of your response to signal the system to close the chat.
 
 Important constraints:
 - Do not ask repeated versions of the same question.
@@ -458,7 +459,7 @@ Important constraints:
 
         const messagesToSend = [
           { role: 'system', content: sysPrompt },
-          ...state.history.slice(-10)
+          ...state.history.slice(-6) // Previous: 10
         ];
 
         const response = await fetch(GOOGLE_SCRIPT_URL, {
@@ -470,6 +471,13 @@ Important constraints:
 
         const data = await response.json();
         const botText = data.message ? data.message.content : (data.content || "Error");
+
+        // Grand End!
+        let shouldEnd = false;
+        if (botText.includes('[FIN]')) {
+            botText.replace('[FIN]', '').trim();
+            shouldEnd = true;
+        }
 
         botContentDiv.innerHTML = marked.parse(botText);
         hljs.highlightAll();
@@ -484,6 +492,10 @@ Important constraints:
         logToSheet(state.discussionId, state.utteranceCount, botText).catch(console.error);
         saveState();
         updateEndButtonVisibility();
+
+        if (shouldEnd) {
+            triggerEndChat();
+        }
 
       } catch (error) {
         console.error(error);
