@@ -123,7 +123,7 @@
     // ==================================================================================
     // CONFIG
     // ==================================================================================
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTVI_RdNMOl-Mizd85TwdbymjjBKG9-HzmDFuCUbSMmOFGBGKNpK5fZGM_RZu2ibsT/exec";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzObxLCM4-3AFXF6Fvs1iYQKZYut9XsDOuDfrEf-ZcqGGJR6zv-gDCeYEG5s0oBCLr8/exec";
     const SESSION_DURATION_MS = 10 * 60 * 1000;
     const WARNING_TIME_MS = 7 * 60 * 1000;
 
@@ -443,26 +443,12 @@ Ending rule:
 
     // Decide which system prompt to use right now
     function getSystemPrompt() {
-  if (state.llmMode === "smalltalk") {
-    return SMALLTALK_SYSTEM_PROMPT(state.lang);
-  }
-
-  if (state.llmMode === "intro_emotion") {
-    return EMOTION_INTRO_SYSTEM_PROMPT(state.lang);
-  }
-
-  if (state.llmMode === "discussion_emotion") {
-    return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
-  }
-
-  return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
-
-  if (state.llmMode === "end") {
-  return END_SYSTEM_PROMPT(state.lang);
-  }
-
-  return END_SYSTEM_PROMPT(state.lang);
-}
+      if (state.llmMode === "smalltalk")          return SMALLTALK_SYSTEM_PROMPT(state.lang);
+      if (state.llmMode === "intro_emotion")      return EMOTION_INTRO_SYSTEM_PROMPT(state.lang);
+      if (state.llmMode === "discussion_emotion") return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang);
+      if (state.llmMode === "end")                return END_SYSTEM_PROMPT(state.lang);
+      return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang); // default fallback
+    }
 
 
 
@@ -560,11 +546,11 @@ Ending rule:
         });
 
         const data = await response.json();
-        const botText = data.message ? data.message.content : (data.content || "Error");
+        let botText = data.message ? data.message.content : (data.content || "Error");
 
         let shouldEnd = false;
         if (botText.includes('[FIN]')) {
-            botText.replace('[FIN]', '').trim();
+            botText = botText.replace('[FIN]', '').trim(); // reassign: replace() returns a new string
             shouldEnd = true;
         }
 
@@ -599,19 +585,44 @@ Ending rule:
       }
     }
 
-    async function logToSheet(id, utteranceNum, text) {
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: 'log',
-          discussion_id: id,
-          utterance_number: utteranceNum,
-          message: text,
-          timestamp: new Date().toISOString()
-        })
+    // Sequential log queue. Logs are fire-and-forget, so without this a single
+    // browser can launch several Apps Script executions at once and push on the
+    // 30-simultaneous-executions limit. This serialises them per tab.
+    // NOTE: text/plain keeps the request "simple" (no CORS preflight). The old
+    // application/json header was silently dropped in no-cors mode anyway, so
+    // this is just making the code honest, not a behaviour change.
+    let _logQueue = [];
+    let _logBusy = false;
+
+    function logToSheet(id, utteranceNum, text) {
+      _logQueue.push({
+        action: 'log',
+        discussion_id: id,
+        utterance_number: utteranceNum,
+        message: text,
+        timestamp: new Date().toISOString()
       });
+      _drainLogQueue();
+      return Promise.resolve(); // existing call sites use .catch(...)
+    }
+
+    async function _drainLogQueue() {
+      if (_logBusy || _logQueue.length === 0) return;
+      _logBusy = true;
+      const payload = _logQueue.shift();
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.error("Log failed", e);
+      } finally {
+        _logBusy = false;
+        setTimeout(_drainLogQueue, 300); // small gap between writes
+      }
     }
 
     function appendMessage(role, text, save = true) {
