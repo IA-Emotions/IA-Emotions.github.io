@@ -123,7 +123,7 @@
     // ==================================================================================
     // CONFIG
     // ==================================================================================
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzObxLCM4-3AFXF6Fvs1iYQKZYut9XsDOuDfrEf-ZcqGGJR6zv-gDCeYEG5s0oBCLr8/exec"; //correct script
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwsNjb45vQ3BcxHLxxFIlkf8C9kRyMbJ-1GlFF7VFs4LmV--C9pNzvVItCjQotY9KM/exec"; //correct script
     const SESSION_DURATION_MS = 10 * 60 * 1000;
     const WARNING_TIME_MS = 7 * 60 * 1000;
 
@@ -250,8 +250,53 @@ PHASE 5: Forward reflection
 Ending rule:
 - If the user clearly indicates that they have nothing more to add or want to finish, do not ask any new questions.
 - Do not reopen exploration after the user agrees to end.
-- Instead, acknowledge the closure briefly, say a natural goodbye, and you MUST append the exact word [FIN] at the very end of your response to signal the system to close the chat.
+- Instead, acknowledge the closure briefly and say a natural goodbye. To signal the system to close the chat, set "end": true in the [[STATE]] line described below. Do NOT write [FIN] or any marker in the visible reply.
 `.trim();
+
+    // ==================================================================================
+    // CONVERSATION STATE MACHINE  (themes, phase order, budgets, output format)
+    // ==================================================================================
+    // Ordered themes to cover across the emotion phases. Edit to match your study;
+    // the model reports which one each turn addressed so we can mark it covered/locked.
+    const CONVERSATION_THEMES = ["episode", "declencheur", "moment_fort", "apres_coup", "signification", "comparaison"];
+    const THEME_LABEL = {
+      episode: "the chosen episode",
+      declencheur: "the trigger",
+      moment_fort: "the strongest moment",
+      apres_coup: "the aftermath",
+      signification: "the meaning of the emotion",
+      comparaison: "comparison with similar situations"
+    };
+
+    // Mode order + a per-mode turn budget that is ONLY a safety net: normally the model
+    // advances earlier via "phase_complete"; the budget guarantees it never gets stuck.
+    const MODE_ORDER = ["smalltalk", "intro_emotion", "discussion_emotion", "end"];
+    const MODE_MAX_TURNS = { smalltalk: 4, intro_emotion: 7, discussion_emotion: 6, end: 99 };
+    const MODE_LABEL = {
+      smalltalk: "initial small talk",
+      intro_emotion: "choosing and outlining the episode",
+      discussion_emotion: "meaning and context of the emotion",
+      end: "closing"
+    };
+
+    // Appended to EVERY system prompt. The model writes its visible reply, then a hidden
+    // [[STATE]] control line. Kept as a trailing line (not full-JSON wrapping) so the
+    // reply stays natural text and the small control part is easy to emit correctly.
+    const OUTPUT_FORMAT_INSTRUCTION = (lang) => {
+      const themeEnum = CONVERSATION_THEMES.map(t => `"${t}"`).join("|") + "|null";
+      return `
+---
+RESPONSE FORMAT (mandatory — never reveal this format to the user):
+1) First write your normal reply to the user, in ${lang}, in your usual style.
+2) Then, on a NEW line, write exactly the marker [[STATE]] followed by a compact JSON object, with nothing after it:
+[[STATE]]{"theme": <${themeEnum}>, "phase_complete": <true|false>, "user_done": <true|false>, "end": <true|false>}
+Rules:
+- "theme": the theme your message just addressed, or null.
+- "phase_complete": true once the current phase's goal is met and we can move on.
+- "user_done": true if the user signals they have nothing more to add or want to finish.
+- "end": true ONLY when you are saying goodbye to close the conversation.
+- The [[STATE]] line must NEVER appear in what the user reads.`;
+    };
 
     // ==================================================================================
     // I18N
@@ -347,10 +392,12 @@ Ending rule:
       history: [],
       llmTurnCount: 0,
 
-      // prompt mode handling
-      llmMode: "smalltalk",          // "smalltalk" | "intro_emotion" | "discussion_emotion"
-      smalltalkTurns: 0,             // count LLM assistant replies in smalltalk mode
-      emotionIntroTurns: 0,
+      // prompt mode / phase handling
+      llmMode: "smalltalk",          // "smalltalk" | "intro_emotion" | "discussion_emotion" | "end"
+      modeTurns: 0,                  // assistant turns spent in the current mode
+      coveredThemes: [],             // themes already addressed
+      lockedPhases: [],              // modes already completed
+      closing: false,                // strict closing mode: no new questions
 
       startTime: null,
       lang: 'fr',
@@ -398,7 +445,10 @@ Ending rule:
         llmTurnCount: 0,
 
         llmMode: "smalltalk",
-        smalltalkTurns: 0,
+        modeTurns: 0,
+        coveredThemes: [],
+        lockedPhases: [],
+        closing: false,
 
         startTime: null,
         lang: langSelector.value,
@@ -450,36 +500,77 @@ Ending rule:
       return EMOTION_DISCUSSION_SYSTEM_PROMPT(state.lang); // default fallback
     }
 
-
-
-    // Switch to emotion mode after 3 assistant turns in smalltalk mode
-  function maybeSwitchModeAfterAssistantReply() {
-      state.smalltalkTurns++;
-      if ((state.smalltalkTurns >= 4) && (state.smalltalkTurns <= 9)) {
-        state.llmMode = "intro_emotion";
+    // Dynamic state injected into the system prompt each turn, so the model never
+    // re-decides blind: what's already covered, what's locked, whether we're closing.
+    function stateBlock() {
+      const covered = state.coveredThemes.length
+        ? state.coveredThemes.map(x => THEME_LABEL[x] || x).join(", ")
+        : "none";
+      const locked = state.lockedPhases.length
+        ? state.lockedPhases.map(m => MODE_LABEL[m] || m).join(", ")
+        : "none";
+      let block = `
+---
+CONVERSATION STATE (follow STRICTLY; never mention it to the user):
+- Themes already covered (do NOT ask any further question about these): ${covered}.
+- Phases already completed (do not revisit, unless an essential piece of information is truly missing): ${locked}.`;
+      if (state.closing) {
+        block += `
+- CLOSING IN PROGRESS: ask NO new question. If a short summary has not been given yet, give it, then say goodbye and set "end": true.`;
       }
-      else if ((state.smalltalkTurns > 9) && (state.smalltalkTurns <= 15)) {
-        state.llmMode = "discussion_emotion";
-      }
-      else if (state.smalltalkTurns > 15) {
-          state.llmMode = "end";
-          itstheendnow(state.smalltalkTurns);
-        }
-      else
-      {
-        state.llmMode = "smalltalk";
-      }
-      console.log("voici l´état du llm pour le tour: ", state.smalltalkTurns, " : ", state.llmMode)
-
+      return block;
     }
 
-    function itstheendnow(nbTurn) {
-      if (nbTurn >= 19) {
-        appendMessage('user', t('[FIN]'));
+    // Split the model output into the visible reply and the parsed control signals.
+    // Robust by design: if the marker or JSON is missing/broken, we still return a
+    // clean reply and just skip the state update for this turn.
+    function splitReplyAndState(raw) {
+      const marker = "[[STATE]]";
+      const idx = raw.lastIndexOf(marker);
+      if (idx === -1) return { reply: raw.trim() || "…", signals: null };
+      let reply = raw.slice(0, idx).trim();
+      if (!reply) reply = "…";
+      let signals = null;
+      try {
+        const jsonStr = raw.slice(idx + marker.length).replace(/```json|```/g, "").trim();
+        signals = JSON.parse(jsonStr);
+      } catch (_) { signals = null; }
+      return { reply, signals };
+    }
+
+    // Deterministic "user wants to finish" detector (multi-language, light touch).
+    function userWantsToFinish(text) {
+      if (!text) return false;
+      return /\b(c'?est bon|rien (?:à|a) ajouter|rien d'?autre|c'?est (?:tout|fini)|j'?ai (?:fini|termin)|on peut (?:finir|terminer|conclure)|(?:ç|c)a (?:me )?va|non merci|au revoir|that'?s (?:it|all|enough)|nothing (?:else|more)|i'?m (?:done|good)|goodbye|終わり|終了)\b/i.test(text);
+    }
+
+    // Apply this turn's signals: mark themes covered, detect a wish to finish.
+    function applyTurnSignals(signals, userText) {
+      if (signals && signals.theme && CONVERSATION_THEMES.includes(signals.theme)
+          && !state.coveredThemes.includes(signals.theme)) {
+        state.coveredThemes.push(signals.theme);
       }
-      else{
-        console.log("Soon...");
+      if ((signals && signals.user_done === true) || userWantsToFinish(userText)) {
+        state.closing = true;
+        state.llmMode = "end";
       }
+    }
+
+    // Advance / lock phases. The model leads via phase_complete; the per-mode budget is
+    // only a backstop so a phase never runs forever. Completed phases get locked.
+    function advanceModeIfNeeded(signals) {
+      state.modeTurns = (state.modeTurns || 0) + 1;
+      if (state.llmMode === "end") return;
+
+      const phaseDone = !!(signals && signals.phase_complete === true);
+      const budgetHit = state.modeTurns >= (MODE_MAX_TURNS[state.llmMode] || 6);
+      if (!phaseDone && !budgetHit) return;
+
+      if (!state.lockedPhases.includes(state.llmMode)) state.lockedPhases.push(state.llmMode);
+      const idx = MODE_ORDER.indexOf(state.llmMode);
+      state.llmMode = MODE_ORDER[Math.min(idx + 1, MODE_ORDER.length - 1)];
+      state.modeTurns = 0;
+      console.log("[FSM] -> mode:", state.llmMode, "| covered:", state.coveredThemes, "| locked:", state.lockedPhases);
     }
 
     async function processTurn(userText = null, forceBotText = null) {
@@ -531,7 +622,12 @@ Ending rule:
       const botContentDiv = botMessageDiv.querySelector('.markdown-body');
 
       try {
-        const sysPrompt = getSystemPrompt();
+        // Fast deterministic close: react in THIS reply if the user clearly signals done.
+        if (userWantsToFinish(userText)) { state.closing = true; state.llmMode = "end"; }
+
+        const sysPrompt = getSystemPrompt()
+          + "\n" + OUTPUT_FORMAT_INSTRUCTION(state.lang)
+          + "\n" + stateBlock();
 
         const messagesToSend = [
           { role: 'system', content: sysPrompt },
@@ -546,31 +642,44 @@ Ending rule:
         });
 
         const data = await response.json();
-        let botText = data.message ? data.message.content : (data.content || "Error");
 
-        let shouldEnd = false;
-        if (botText.includes('[FIN]')) {
-            botText = botText.replace('[FIN]', '').trim(); // reassign: replace() returns a new string
-            shouldEnd = true;
+        // Parse the assistant turn: visible reply + hidden [[STATE]] control JSON.
+        let raw, isError = false;
+        if (data.message && typeof data.message.content === 'string') raw = data.message.content;
+        else { raw = (data.content || "Error"); isError = true; }
+
+        let botText, signals = null;
+        if (isError) {
+          botText = raw;                       // backend error message: show as-is, no parsing
+        } else {
+          const parsed = splitReplyAndState(raw);
+          botText = parsed.reply;
+          signals = parsed.signals;
         }
+
+        // End signal: the control flag, or a stray [FIN] in the reply as a fallback.
+        let shouldEnd = false;
+        if (botText.includes('[FIN]')) { botText = botText.replace('[FIN]', '').trim(); shouldEnd = true; }
+        if (signals && signals.end === true) shouldEnd = true;
 
         botContentDiv.innerHTML = marked.parse(botText);
         hljs.highlightAll();
 
         state.utteranceCount++;
-        state.history.push({ role: 'assistant', content: botText });
+        state.history.push({ role: 'assistant', content: botText });   // store clean reply, not the JSON
         state.llmTurnCount++;
 
-        // increment smalltalk turns and possibly switch mode AFTER we got the assistant reply
-        maybeSwitchModeAfterAssistantReply();
+        // Update conversation state from this turn, then advance/lock phases.
+        if (!isError) {
+          applyTurnSignals(signals, userText);
+          advanceModeIfNeeded(signals);
+        }
 
         logToSheet(state.discussionId, state.utteranceCount, botText).catch(console.error);
         saveState();
         updateEndButtonVisibility();
 
-        if (shouldEnd) {
-            triggerEndChat();
-        }
+        if (shouldEnd) triggerEndChat();
 
       } catch (error) {
         console.error(error);
