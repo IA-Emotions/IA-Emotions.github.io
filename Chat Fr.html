@@ -124,8 +124,10 @@
     // CONFIG
     // ==================================================================================
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwsNjb45vQ3BcxHLxxFIlkf8C9kRyMbJ-1GlFF7VFs4LmV--C9pNzvVItCjQotY9KM/exec"; //correct script
-    const SESSION_DURATION_MS = 10 * 60 * 1000;
-    const WARNING_TIME_MS = 7 * 60 * 1000;
+
+    // Maintenant, mesure du temps d'inacitivité au lieu de la durée totale de la conversation
+    const INACTIVITY_LIMIT_MS = 20 * 60 * 1000;
+    const INACTIVITY_WARNING_MS  = 17 * 60 * 1000;
 
     // ==================================================================================
     // SYSTEM PROMPTS (2 modes)
@@ -315,7 +317,7 @@ Rules:
             "\n" +
             "Pour commencer, pourriez-vous me dire quel pseudo vous préférez (et vos pronoms, si vous le souhaitez) ?",
         listen: "Je vous écoute.",
-        timeUpWarning: "Le temps passe vite ! Il nous reste quelques minutes.",
+        timeUpWarning: "Êtes-vous toujours là ?",
         timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
         finalMessage: () => {
           const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
@@ -334,7 +336,7 @@ Rules:
             "\n" +
             "To get started, could you tell me your preferred nickname (and pronouns, if you’d like)? ",
         listen: "I'm listening.",
-        timeUpWarning: "Time flies! We have a few minutes left.",
+        timeUpWarning: "Are you still there?",
         timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
         finalMessage: () => {
           const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
@@ -351,7 +353,7 @@ Rules:
         endHint: "終了するには「終了」と言ってください。",
         greeting: "こんにちは！お話しできて嬉しいです。なんとお呼びすればいいですか？（ニックネームでも構いません）。",
         listen: "聞いています。",
-        timeUpWarning: "時間が経つのは早いですね！残り数分です。",
+        timeUpWarning: "まだいらっしゃいますか？",
         timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
         finalMessage: () => {
           const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
@@ -401,7 +403,7 @@ Rules:
       coveredThemes: [],             // themes already addressed
       lockedPhases: [],              // modes already completed
       closing: false,                // strict closing mode: no new questions
-
+      lastActivity: null,
       startTime: null,
       lang: 'fr',
       timerInterval: null,
@@ -420,7 +422,7 @@ Rules:
           if (parsed.step !== STEPS.END) {
             state = { ...state, ...parsed }; // keep defaults for missing fields
             restoreChatLog();
-            if (state.startTime) startTimer(false);
+            if (state.startTime) { state.lastActivity = Date.now(); startTimer(false); }
             updateLanguageUI();
             updateEndButtonVisibility();
             if (state.history.length > 0) {
@@ -452,7 +454,7 @@ Rules:
         coveredThemes: [],
         lockedPhases: [],
         closing: false,
-
+        lastActivity: null,
         startTime: null,
         lang: langSelector.value,
         timerInterval: null,
@@ -587,7 +589,7 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
 
       // Handle greeting on start click (no user text yet)
       if (!userText && state.step === STEPS.GREETING && !forceBotText) {
-        startTimer(false);
+        startTimer(true);
         state.step = STEPS.NATURAL_CONVERSATION;
 
         // Show a first assistant line (scripted), then user can answer and LLM starts
@@ -603,6 +605,9 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
 
       // 1) user message
       if (userText) {
+        state.lastActivity = Date.now(); // chaque message relance le minuteur d'inactivité (une conversation active n'est jamais coupée)
+        state.warningSent = false;       // ré-arme l'avertissement pour la prochaine période de silence
+        state.pendingTimeUp = false;     // annule une clôture en attente : l'utilisateur vient de répondre, il n'est plus inactif
         state.utteranceCount++;
         appendMessage('user', userText);
         state.history.push({ role: 'user', content: userText });
@@ -786,8 +791,8 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
       state.timerInterval = setInterval(() => {
         if (!state.startTime) return;
 
-        const elapsed = Date.now() - state.startTime;
-        const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
+        const elapsed = Date.now() - (state.lastActivity || state.startTime);
+        const remaining = Math.max(0, INACTIVITY_LIMIT_MS - elapsed);
 
         const m = Math.floor(remaining / 60000);
         const s = Math.floor((remaining % 60000) / 1000);
@@ -796,12 +801,15 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
         timerDisplay.textContent = text;
         mobileTimer.textContent = text;
 
-        if (elapsed > WARNING_TIME_MS) {
+        if (elapsed > INACTIVITY_WARNING_MS) {
           timerDisplay.classList.add('timer-warning');
           if (!state.warningSent) {
             state.warningSent = true;
             injectSystemMessage(t('timeUpWarning'));
           }
+        }
+        else {
+          timerDisplay.classList.remove('timer-warning');
         }
 
         if (remaining <= 0 && state.step !== STEPS.LAST_TURN && state.step !== STEPS.END) {
