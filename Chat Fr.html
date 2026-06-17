@@ -271,7 +271,10 @@ Ending rule:
     // Mode order + a per-mode turn budget that is ONLY a safety net: normally the model
     // advances earlier via "phase_complete"; the budget guarantees it never gets stuck.
     const MODE_ORDER = ["smalltalk", "intro_emotion", "discussion_emotion", "end"];
-    const MODE_MAX_TURNS = { smalltalk: 4, intro_emotion: 7, discussion_emotion: 6, end: 99 };
+    //  minimum de tours par étape
+    const MODE_MIN_TURNS = { smalltalk: 4, intro_emotion: 7, discussion_emotion: 6, end: 30 };
+    // nouveau maximum = minimum + 2 (filet de sécurité, valeurs provisoires)
+    const MODE_MAX_TURNS = { smalltalk: 6, intro_emotion: 9, discussion_emotion: 8, end: 32 };
     const MODE_LABEL = {
       smalltalk: "initial small talk",
       intro_emotion: "choosing and outlining the episode",
@@ -562,7 +565,10 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
       state.modeTurns = (state.modeTurns || 0) + 1;
       if (state.llmMode === "end") return;
 
-      const phaseDone = !!(signals && signals.phase_complete === true);
+      // [AJOUT] le nombre minimum de tours de l'étape est-il atteint ?
+      const minOk = state.modeTurns >= (MODE_MIN_TURNS[state.llmMode] || 1);
+      // [MODIF] "phase_complete" n'est pris en compte qu'une fois ce minimum atteint
+      const phaseDone = minOk && !!(signals && signals.phase_complete === true);
       const budgetHit = state.modeTurns >= (MODE_MAX_TURNS[state.llmMode] || 6);
       if (!phaseDone && !budgetHit) return;
 
