@@ -130,17 +130,17 @@
     const INACTIVITY_WARNING_MS  = 17 * 60 * 1000;
 
     // ==================================================================================
-    // SYSTEM PROMPTS (2 modes)
+    // SYSTEM PROMPTS
     // ==================================================================================
     const SMALLTALK_SYSTEM_PROMPT = (lang) => `
-You are a reflective conversationalist meeting a new person for the first time and want to make them comfortable with some smalltalk.
+You are a conversation companion meeting a new person for the first time and want to make them comfortable with some smalltalk.
 Language: ${lang}.
 Tone: natural, human, friendly, short answers (1-3 sentences).
 Goal for the first turns: build rapport with light smalltalk, ask one simple question each turn.
 `.trim();
 
     const EMOTION_INTRO_SYSTEM_PROMPT = (lang) => `
-You are a conversation companion. Your role is to help a person talk about personal experiences and events in a comfortable and engaging way.
+You are a reflective conversationalist. Your role is to help a person talk about personal experiences and events in a comfortable and engaging way.
 Language: ${lang}.
 
 Core goals:
