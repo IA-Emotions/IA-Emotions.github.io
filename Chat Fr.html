@@ -57,7 +57,7 @@
     </div>
 
     <div class="mt-auto px-3 pb-4">
-      <div id="timer-display" class="text-xs text-gray-400 font-mono mb-2">00:00</div>
+      <div id="timer-display" class="hidden text-xs text-gray-400 font-mono mb-2">00:00</div>
       <button id="end-btn-desktop" class="hidden w-full items-center justify-center gap-2 rounded border border-red-500/50 bg-red-500/10 p-2 text-xs text-red-200 transition-colors hover:bg-red-500/20">
         Stop / Fin
       </button>
@@ -66,7 +66,7 @@
 
   <div class="flex flex-1 flex-col relative">
     <div class="flex items-center justify-between border-b border-white/20 bg-gray-800 p-2 text-gray-100 md:hidden">
-      <div class="text-xs font-mono" id="mobile-timer">00:00</div>
+      <div class="hidden text-xs font-mono" id="mobile-timer">00:00</div>
       <button id="end-btn-mobile" class="hidden px-2 py-1 text-xs text-red-300 border border-red-900 rounded bg-red-900/20 mr-2">
         Fin
       </button>
@@ -318,15 +318,17 @@ Rules:
         startBtn: "Commencer la discussion",
         placeholder: "Écrivez votre message...",
         endHint: "Dites 'au revoir' pour terminer.",
-        greeting: "Bonjour ! Je suis ravi que vous ayez pris cette initiative pour entrer en contact. Je m'appelle Alex et je suis là pour vous écouter et vous aider à explorer ce qui vous préoccupe en ce moment. Tout ce que vous me confierez restera confidentiel et c'est vous qui contrôlerez la conversation. N'hésitez pas à partager autant ou aussi peu que vous le souhaitez.\n" +
+        greeting: "Bonjour, je suis ravi que vous soyez ici ! Je m'appelle Alex et je vais échanger avec vous aujourd'hui. Tout ce que vous partagerez restera confidentiel, et vous gardez le contrôle de la conversation : n'hésitez pas à partager autant ou aussi peu que vous le souhaitez.\n" +
             "\n" +
-            "Pour commencer, pourriez-vous me dire quel pseudo vous préférez (et vos pronoms, si vous le souhaitez) ?",
+            "Certaines questions peuvent vous sembler inhabituelles ou ne pas être faciles à répondre immédiatement. N'hésitez pas à prendre un moment pour y réfléchir. Il n'y a pas de bonnes ou de mauvaises réponses.\n" +
+            "\n" +
+            "Pour commencer, comment se passe votre journée jusqu'à présent ?",
         listen: "Je vous écoute.",
         timeUpWarning: "Êtes-vous toujours là ?",
         timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
         finalMessage: () => {
           const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
-          return `Merci d'avoir participé ! <br><br> La suite se passe ici : <a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
+          return `Merci d'avoir pris le temps d'échanger aujourd'hui. Pour finaliser votre participation à l'étude, veuillez remplir le questionnaire en utilisant le lien ci-dessous :<br><br><a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
         },
         errBackend: "Erreur de connexion au backend IA.",
         minCharWarning: "Veuillez écrire un peu plus (au moins 25 caractères).",
@@ -337,15 +339,17 @@ Rules:
         startBtn: "Start Conversation",
         placeholder: "Type your message...",
         endHint: "Say 'goodbye' to finish.",
-        greeting: "Hello! I’m glad you’ve taken this step to connect. My name is Alex, and I’m here to listen and help you explore what’s on your mind right now. Everything you share is confidential, and you’re in control of the conversation - feel free to share as much or as little as you’re comfortable with.\n" +
+        greeting: "Hello, I'm glad you're here! My name is Alex, and I'll be chatting with you today. Everything you share is confidential, and you're in control of the conversation - feel free to share as much or as little as you're comfortable with.\n" +
             "\n" +
-            "To get started, could you tell me your preferred nickname (and pronouns, if you’d like)? ",
+            "Some questions may feel unusual or may not be easy to answer right away. Feel free to take a moment to think about them. There are no right or wrong answers.\n" +
+            "\n" +
+            "To begin, how has your day been so far?",
         listen: "I'm listening.",
         timeUpWarning: "Are you still there?",
         timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
         finalMessage: () => {
           const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
-          return `Thank you for participating! <br><br> Next step: <a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
+          return `Thank you for having taken the time to chat. To complete your participation in the study, please fill out the questionnaire using the link below:<br><br><a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
         },
         errBackend: "Error connecting to AI backend.",
         minCharWarning: "Please write a bit more (at least 25 characters).",
@@ -356,13 +360,17 @@ Rules:
         startBtn: "会話を始める",
         placeholder: "メッセージを入力...",
         endHint: "終了するには「終了」と言ってください。",
-        greeting: "こんにちは！お話しできて嬉しいです。なんとお呼びすればいいですか？（ニックネームでも構いません）。",
+        greeting: "こんにちは、来てくれて嬉しいです！私はアレックスと申します。今日は皆さんとコミュニケーションを交わしたいと思います。皆さんが話してくださった内容はすべて秘密厳守です。会話の主導権は皆さんにあるので、話したい分だけ、遠慮なくお話しください。\n" +
+            "\n" +
+            "質問の中には、少し変わったものや、すぐに答えにくいものもあるかもしれません。その場合は、少し時間をかけて考えてみてください。正解も不正解もありません。\n" +
+            "\n" +
+            "まずは、今日の調子はいかがですか？",
         listen: "聞いています。",
         timeUpWarning: "まだいらっしゃいますか？",
         timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
         finalMessage: () => {
           const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
-          return `ご参加ありがとうございました！ <br><br> 次のステップ: <a href='${url}' target='_blank' class='underline text-blue-400'>アンケートはこちら</a>`;
+          return `お時間を割いてチャットにご参加いただき、ありがとうございます。本調査への参加を完了させるため、以下のリンクからアンケートにご回答ください：<br><br><a href="${url}" target="_blank" class="underline text-blue-400">アンケートはこちら</a>`;
         },
         errBackend: "AIバックエンドへの接続エラー。",
         minCharWarning: "もう少し長く書いてください（25文字以上）。",
@@ -444,6 +452,15 @@ Rules:
       } else {
         resetState();
       }
+      applyStartLock();
+    }
+
+    // si la discussion n'as pas démarré, zone de saisie désactivée, le participant doit cliquer sur commencer la discussion et voir le premier message avant de pouvoir écrire
+
+    function applyStartLock() {
+      const needStart = (state.step === STEPS.GREETING && state.history.length === 0);
+      userInput.disabled = needStart;
+      sendBtn.disabled = needStart;
     }
 
     function resetState() {
@@ -712,10 +729,10 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
 
     // Sequential log queue. Logs are fire-and-forget, so without this a single
     // browser can launch several Apps Script executions at once and push on the
-    // 30-simultaneous-executions limit. This serialises them per tab.
+    // 30-simultaneous-executions limit. This serializes them per tab.
     // NOTE: text/plain keeps the request "simple" (no CORS preflight). The old
     // application/json header was silently dropped in no-cors mode anyway, so
-    // this is just making the code honest, not a behaviour change.
+    // this is just making the code honest, not a behavior change.
     let _logQueue = [];
     let _logBusy = false;
 
