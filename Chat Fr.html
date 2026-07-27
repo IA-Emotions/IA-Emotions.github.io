@@ -302,7 +302,7 @@ RESPONSE FORMAT (mandatory — never reveal this format to the user):
 [[STATE]]{"theme": <${themeEnum}>, "phase_complete": <true|false>, "user_done": <true|false>, "end": <true|false>}
 Rules:
 - "theme": the theme your message just addressed, or null.
-- "phase_complete": true once the current phase's goal is met and we can move on.
+- "phase_complete": true once the current phase's goal is met, and we can move on.
 - "user_done": true if the user signals they have nothing more to add or want to finish.
 - "end": true ONLY when you are saying goodbye to close the conversation.
 - The [[STATE]] line must NEVER appear in what the user reads.`;
@@ -556,7 +556,7 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
     // Robust by design: if the marker or JSON is missing/broken, we still return a
     // clean reply and just skip the state update for this turn.
     function splitReplyAndState(raw) {
-      const markerRe = /\[{1,3}\s*STATE\s*\]{0,3}/gi;   // tolère 1-3 crochets + espaces
+      const markerRe = /\[{1,3}\s*STATE\s*]{0,3}/gi;   // tolère 1-3 crochets + espaces
       let m, last = null;
       while ((m = markerRe.exec(raw)) !== null) last = m; // on garde la dernière occurrence
       if (!last) return { reply: raw.trim() || "…", signals: null };
@@ -565,7 +565,7 @@ CONVERSATION STATE (follow STRICTLY; never mention it to the user):
       let signals = null;
       try {
         const after = raw.slice(last.index + last[0].length).replace(/```json|```/g, "");
-        const jm = after.match(/\{[\s\S]*?\}/);
+        const jm = after.match(/\{[\s\S]*?}/);
         if (jm) signals = JSON.parse(jm[0]);
       } catch (_) { signals = null; }
       return { reply, signals };

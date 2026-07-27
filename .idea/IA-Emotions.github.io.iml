@@ -12,5 +12,8 @@
     <orderEntry type="library" name="marked" level="application" />
     <orderEntry type="library" name="highlight.js" level="application" />
     <orderEntry type="library" name="wanakana" level="application" />
+    <orderEntry type="library" name="marked" level="application" />
+    <orderEntry type="library" name="highlight.js" level="application" />
+    <orderEntry type="library" name="wanakana" level="application" />
   </component>
 </module>
