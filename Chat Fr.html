@@ -327,7 +327,7 @@ Rules:
         timeUpWarning: "Êtes-vous toujours là ?",
         timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
         finalMessage: () => {
-          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform?usp=publish-editor`;
+          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform`;
           return `Merci d'avoir pris le temps d'échanger aujourd'hui. Pour finaliser votre participation à l'étude, veuillez remplir le questionnaire en utilisant le lien ci-dessous :<br><br><a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
         },
         errBackend: "Erreur de connexion au backend IA.",
@@ -348,7 +348,7 @@ Rules:
         timeUpWarning: "Are you still there?",
         timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
         finalMessage: () => {
-          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform?usp=publish-editor`;
+          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform`;
           return `Thank you for having taken the time to chat. To complete your participation in the study, please fill out the questionnaire using the link below:<br><br><a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
         },
         errBackend: "Error connecting to AI backend.",
@@ -369,7 +369,7 @@ Rules:
         timeUpWarning: "まだいらっしゃいますか？",
         timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
         finalMessage: () => {
-          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform?usp=publish-editor`;
+          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform`;
           return `お時間を割いてチャットにご参加いただき、ありがとうございます。本調査への参加を完了させるため、以下のリンクからアンケートにご回答ください：<br><br><a href="${url}" target="_blank" class="underline text-blue-400">アンケートはこちら</a>`;
         },
         errBackend: "AIバックエンドへの接続エラー。",
@@ -428,6 +428,8 @@ Rules:
     // INIT / STORAGE
     // ==================================================================================
     function init() {
+      const urlLang = new URLSearchParams(location.search).get('lang');
+      if (['fr', 'en', 'ja'].includes(urlLang)) langSelector.value = urlLang;
       const saved = localStorage.getItem('ai_motion_state');
       if (saved) {
         try {
