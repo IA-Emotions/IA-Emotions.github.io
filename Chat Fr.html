@@ -50,8 +50,8 @@
     <div class="px-3 mb-4">
       <label class="text-xs text-gray-400 mb-1 block">Language / Langue</label>
       <select id="lang-selector" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-1 text-xs focus:ring-1 focus:ring-white">
+        <option value="en" selected>English</option>
         <option value="fr">Français</option>
-        <option value="en">English</option>
         <option value="ja">日本語 (Japanese)</option>
       </select>
     </div>
@@ -327,7 +327,7 @@ Rules:
         timeUpWarning: "Êtes-vous toujours là ?",
         timeUpFinal: "Notre temps est écoulé. Avez-vous une dernière pensée à partager avant de conclure ?",
         finalMessage: () => {
-          const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
+          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform?usp=publish-editor`;
           return `Merci d'avoir pris le temps d'échanger aujourd'hui. Pour finaliser votre participation à l'étude, veuillez remplir le questionnaire en utilisant le lien ci-dessous :<br><br><a href='${url}' target='_blank' class='underline text-blue-400'>Cliquez ici pour le questionnaire</a>`;
         },
         errBackend: "Erreur de connexion au backend IA.",
@@ -348,7 +348,7 @@ Rules:
         timeUpWarning: "Are you still there?",
         timeUpFinal: "Our time is up. Do you have a last thought to share before we wrap up?",
         finalMessage: () => {
-          const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
+          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform?usp=publish-editor`;
           return `Thank you for having taken the time to chat. To complete your participation in the study, please fill out the questionnaire using the link below:<br><br><a href='${url}' target='_blank' class='underline text-blue-400'>Click here for the survey</a>`;
         },
         errBackend: "Error connecting to AI backend.",
@@ -369,7 +369,7 @@ Rules:
         timeUpWarning: "まだいらっしゃいますか？",
         timeUpFinal: "時間が来ました。最後に何か共有したい思いはありますか？",
         finalMessage: () => {
-          const url = `https://www.soscisurvey.de/aiemotion/?act=IKfSv1RRmEnJw1SJENKQRKY9&r=${state.discussionId}`;
+          const url = `https://docs.google.com/forms/d/e/1FAIpQLSdSHfWLYDtdCGyxOSq3WSaqczixmDhFB4BHwJNG-eO6w77IXw/viewform?usp=publish-editor`;
           return `お時間を割いてチャットにご参加いただき、ありがとうございます。本調査への参加を完了させるため、以下のリンクからアンケートにご回答ください：<br><br><a href="${url}" target="_blank" class="underline text-blue-400">アンケートはこちら</a>`;
         },
         errBackend: "AIバックエンドへの接続エラー。",
@@ -418,7 +418,7 @@ Rules:
       closing: false,                // strict closing mode: no new questions
       lastActivity: null,
       startTime: null,
-      lang: 'fr',
+      lang: 'en',
       timerInterval: null,
       warningSent: false,
       pendingTimeUp: false
@@ -452,6 +452,7 @@ Rules:
       } else {
         resetState();
       }
+      updateLanguageUI();
       applyStartLock();
     }
 
@@ -512,6 +513,7 @@ Rules:
 
     function updateLanguageUI() {
       const L = I18N[state.lang];
+      langSelector.value = state.lang;
       document.querySelector('.lang-new-chat').textContent = L.newChat;
       document.querySelector('.lang-welcome-sub').textContent = L.welcomeSub;
       document.querySelector('.lang-start-btn').textContent = L.startBtn;
