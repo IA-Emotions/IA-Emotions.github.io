@@ -429,7 +429,8 @@ Rules:
     // ==================================================================================
     function init() {
       const urlLang = new URLSearchParams(location.search).get('lang');
-      if (['fr', 'en', 'ja'].includes(urlLang)) langSelector.value = urlLang;
+      const forcedLang = ['fr', 'en', 'ja'].includes(urlLang) ? urlLang : null;
+      if (forcedLang) langSelector.value = forcedLang;
       const saved = localStorage.getItem('ai_motion_state');
       if (saved) {
         try {
@@ -453,6 +454,10 @@ Rules:
         }
       } else {
         resetState();
+      }
+      if (forcedLang && state.history.length === 0 && state.lang !== forcedLang) {
+        state.lang = forcedLang;
+        saveState();
       }
       updateLanguageUI();
       applyStartLock();
